@@ -6,8 +6,8 @@ using PyPlot
 #rc("font", family="Times New Roman", size=18.0)
 rc("font", family="Arial", size=16.0)
 
-nx = 512
-ny = 512
+nx = 1024
+ny = 1024
 residual_hist = readdlm("mg_residual.txt")#, datarow = 3, type=Float64)
 iter_hist =  residual_hist[:,1]
 res_hist = convert(Matrix, residual_hist[:,2:3])
