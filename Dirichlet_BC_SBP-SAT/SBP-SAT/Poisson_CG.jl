@@ -161,15 +161,17 @@ for k in 6:7
      # Analytical Solutions
     analy_sol = u(x,y');
 
+   
+
+    # Forming SAT terms (D,D,D,D)
+
     # Penalty Parameters
     tau_E = -13/hx;
     tau_W = -13/hx;
     tau_N = -13/hy;
     tau_S = -13/hy;
-
-    beta = 1;
-
-    # Forming SAT terms
+ 
+     beta = 1;
 
     ## Formulation 1
     SAT_W = tau_W*HI_x*E_W + beta*HI_x*BS_x'*E_W;
@@ -199,10 +201,57 @@ for k in 6:7
     A = - H_tilde*A;
     b = - H_tilde*b;
 
-    direct_sol = A\b
-    direct_sol_matrix = reshape(direct_sol,Nx,Ny)
+    direct_sol_DDDD = A\b
+    direct_sol_matrix_DDDD = reshape(direct_sol,Nx,Ny)
 
-    surface(x,y,direct_sol_matrix)
+    surface(x,y,direct_sol_matrix_DDDD)
+
+    ## Formulation 2 (D,D,N,N)
+
+    tau_E = -13/hx;
+    tau_W = -13/hx;
+    tau_N = -1;
+    tau_S = -1;
+
+    beta = 1;
+
+    SAT_W = tau_W*HI_x*E_W + beta*HI_x*BS_x'*E_W;
+    SAT_E = tau_E*HI_x*E_E + beta*HI_x*BS_x'*E_E;
+    
+    # SAT_S = tau_S*HI_y*E_S*D1_y
+    # SAT_N = tau_N*HI_y*E_N*D1_y
+
+    SAT_S = tau_S*HI_y*E_S*BS_y;
+    SAT_N = tau_N*HI_y*E_N*BS_y;
+
+    SAT_W_r = tau_W*HI_x*E_W*e_W + beta*HI_x*BS_x'*E_W*e_W;
+    SAT_E_r = tau_E*HI_x*E_E*e_E + beta*HI_x*BS_x'*E_E*e_E;
+    SAT_S_r = tau_S*HI_y*E_S*e_S;
+    SAT_N_r = tau_N*HI_y*E_N*e_N;
+
+
+    (alpha1,alpha2,alpha3,alpha4,beta) = (tau_N,tau_S,tau_W,tau_E,beta);
+
+
+    g_W = -1 * (y.^2 .- 1);
+    g_E = (0) * (y.^2 .- 1) ;
+    g_S = (x.^2 .- 1) .* (-2 .* 0);
+    # g_N = -π*cos.(π*x)
+    g_N = (x.^2 .- 1) .* (2 .* 1);
+
+    # Solving with CPU
+    A = -D2 + SAT_W + SAT_E + SAT_S + SAT_N;
+
+    b = f(x,y')[:] + SAT_W_r*g_W + SAT_E_r*g_E + SAT_S_r*g_S + SAT_N_r*g_N;
+
+    A = - H_tilde*A;
+    b = - H_tilde*b;
+
+    direct_sol_DDNN = A\b
+    direct_sol_matrix_DDNN = reshape(direct_sol,Nx,Ny)
+
+    surface(x,y,direct_sol_matrix_DDNN)
+
 
     u_exact = u(x,y')
     surface(x,y,u_exact)
