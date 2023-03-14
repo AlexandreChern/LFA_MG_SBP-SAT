@@ -2,7 +2,7 @@ include("diagonal_sbp.jl")
 
 
 # Solving Poisson Equation
-# Δ u(x,y) = f(x,y)
+# - Δu(x,y) = f(x,y)
 # Manufactured Solution: u(x,y) = (x^2 -1) * (y^2 - 1) on a unit square
 # source term f(x,y) = -2(2 - x^2 - y^2)
 
@@ -166,12 +166,12 @@ for k in 6:7
     # Forming SAT terms (D,D,D,D)
 
     # Penalty Parameters
-    tau_E = -13/hx;
-    tau_W = -13/hx;
-    tau_N = -13/hy;
-    tau_S = -13/hy;
+    tau_E = 13/hx;
+    tau_W = 13/hx;
+    tau_N = 13/hy;
+    tau_S = 13/hy;
  
-     beta = 1;
+    beta = 1;
 
     ## Formulation 1
     SAT_W = tau_W*HI_x*E_W + beta*HI_x*BS_x'*E_W;
@@ -198,20 +198,20 @@ for k in 6:7
 
     b = f(x,y')[:] + SAT_W_r*g_W + SAT_E_r*g_E + SAT_S_r*g_S + SAT_N_r*g_N;
 
-    A = - H_tilde*A;
-    b = - H_tilde*b;
+    A_DDDD = H_tilde*A;
+    b_DDDD = H_tilde*b;
 
-    direct_sol_DDDD = A\b
+    direct_sol_DDDD = A_DDDD\b_DDDD
     direct_sol_matrix_DDDD = reshape(direct_sol,Nx,Ny)
 
     surface(x,y,direct_sol_matrix_DDDD)
 
     ## Formulation 2 (D,D,N,N)
 
-    tau_E = -13/hx;
-    tau_W = -13/hx;
-    tau_N = -1;
-    tau_S = -1;
+    tau_E = 13/hx;
+    tau_W = 13/hx;
+    tau_N = 1;
+    tau_S = 1;
 
     beta = 1;
 
@@ -244,10 +244,10 @@ for k in 6:7
 
     b = f(x,y')[:] + SAT_W_r*g_W + SAT_E_r*g_E + SAT_S_r*g_S + SAT_N_r*g_N;
 
-    A = - H_tilde*A;
-    b = - H_tilde*b;
+    A_DDNN = - H_tilde*A;
+    b_DDNN = - H_tilde*b;
 
-    direct_sol_DDNN = A\b
+    direct_sol_DDNN = A_DDNN\b_DDNN
     direct_sol_matrix_DDNN = reshape(direct_sol,Nx,Ny)
 
     surface(x,y,direct_sol_matrix_DDNN)
