@@ -171,7 +171,7 @@ for k in 6:7
     tau_N = 13/hy;
     tau_S = 13/hy;
  
-    beta = 1;
+    beta = -1;
 
     ## Formulation 1
     SAT_W = tau_W*HI_x*E_W + beta*HI_x*BS_x'*E_W;
@@ -213,7 +213,7 @@ for k in 6:7
     tau_N = 1;
     tau_S = 1;
 
-    beta = 1;
+    beta = -1;
 
     SAT_W = tau_W*HI_x*E_W + beta*HI_x*BS_x'*E_W;
     SAT_E = tau_E*HI_x*E_E + beta*HI_x*BS_x'*E_E;
@@ -240,12 +240,12 @@ for k in 6:7
     g_N = (x.^2 .- 1) .* (2 .* 1);
 
     # Solving with CPU
-    A = -D2 + SAT_W + SAT_E + SAT_S + SAT_N;
+    A = - D2 + SAT_W + SAT_E + SAT_S + SAT_N;
 
     b = f(x,y')[:] + SAT_W_r*g_W + SAT_E_r*g_E + SAT_S_r*g_S + SAT_N_r*g_N;
 
-    A_DDNN = - H_tilde*A;
-    b_DDNN = - H_tilde*b;
+    A_DDNN = H_tilde*A;
+    b_DDNN = H_tilde*b;
 
     direct_sol_DDNN = A_DDNN\b_DDNN
     direct_sol_matrix_DDNN = reshape(direct_sol,Nx,Ny)
