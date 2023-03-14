@@ -32,7 +32,12 @@ function eyes(n)
 end
 
 function u(x,y)
-    return sin.(π*x .+ π*y)
+    # return sin.(π*x .+ π*y)
+    return (x.^2 .- 1) .* (y.^2 .- 1)
+end
+
+function f(x,y)
+    return 2 .* (2 .- x.^2 .- y.^2)
 end
 
 function Diag(A)
@@ -159,8 +164,8 @@ for k in 6:7
     # Penalty Parameters
     tau_E = -13/hx;
     tau_W = -13/hx;
-    tau_N = -1;
-    tau_S = -1;
+    tau_N = -13/hy;
+    tau_S = -13/hy;
 
     beta = 1;
 
@@ -169,34 +174,38 @@ for k in 6:7
     ## Formulation 1
     SAT_W = tau_W*HI_x*E_W + beta*HI_x*BS_x'*E_W;
     SAT_E = tau_E*HI_x*E_E + beta*HI_x*BS_x'*E_E;
-    
-    # SAT_S = tau_S*HI_y*E_S*D1_y
-    # SAT_N = tau_N*HI_y*E_N*D1_y
-
-    SAT_S = tau_S*HI_y*E_S*BS_y;
-    SAT_N = tau_N*HI_y*E_N*BS_y;
+    SAT_S = tau_S*HI_y*E_S + beta*HI_y*BS_y'*E_S;
+    SAT_N = tau_N*HI_y*E_N + beta*HI_y*BS_y'*E_N;
 
     SAT_W_r = tau_W*HI_x*E_W*e_W + beta*HI_x*BS_x'*E_W*e_W;
     SAT_E_r = tau_E*HI_x*E_E*e_E + beta*HI_x*BS_x'*E_E*e_E;
-    SAT_S_r = tau_S*HI_y*E_S*e_S;
-    SAT_N_r = tau_N*HI_y*E_N*e_N;
+    SAT_S_r = tau_S*HI_y*E_S*e_S + beta*HI_y*BS_y'*E_S*e_S;
+    SAT_N_r = tau_N*HI_y*E_N*e_N + beta*HI_y*BS_y'*E_N*e_N;
 
 
     (alpha1,alpha2,alpha3,alpha4,beta) = (tau_N,tau_S,tau_W,tau_E,beta);
 
 
-    g_W = ;
-    g_E = ;
-    g_S = ;
-    g_N = ;
+    g_W = -1 * (y.^2 .- 1);
+    g_E = (0) * (y.^2 .- 1) ;
+    g_S = (x.^2 .- 1) * (-1);
+    g_N = (x.^2 .- 1) * (0);
 
     # Solving with CPU
-    A = D2 + SAT_W + SAT_E + SAT_S + SAT_N;
+    A = -D2 + SAT_W + SAT_E + SAT_S + SAT_N;
 
-    b = -2π^2*u(x,y')[:] + SAT_W_r*g_W + SAT_E_r*g_E + SAT_S_r*g_S + SAT_N_r*g_N;
+    b = f(x,y')[:] + SAT_W_r*g_W + SAT_E_r*g_E + SAT_S_r*g_S + SAT_N_r*g_N;
 
     A = - H_tilde*A;
     b = - H_tilde*b;
+
+    direct_sol = A\b
+    direct_sol_matrix = reshape(direct_sol,Nx,Ny)
+
+    surface(x,y,direct_sol_matrix)
+
+    u_exact = u(x,y')
+    surface(x,y,u_exact)
 
     @show nnz(A) * sizeof(Float64)
 
