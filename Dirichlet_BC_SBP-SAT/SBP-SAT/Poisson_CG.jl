@@ -132,8 +132,8 @@ iter_errs = []
 # for k in 1:length(h_list_x)
 println("################### BEGIN TEST #########################")
 
-output = open("SBP_iterative_properties.txt", "w")
-for k in 3:6
+output = open("SBP_iterative_properties_3_10.txt", "w")
+for k in 3:10
     println()
     i = j  = k
     println("##########   Starting Test for k = ", k, "   ######################")
@@ -208,8 +208,12 @@ for k in 3:6
     A_DDDD = H_tilde*A;
     b_DDDD = H_tilde*b;
 
-    cond_A = cond(Matrix(A_DDDD))
-    write(output, "Condition number of A_DDDD is $cond_A \n")
+    if k <= 6
+        cond_A = cond(Matrix(A_DDDD))
+        write(output, "Condition number of A_DDDD is $cond_A \n")
+    else
+        write(output, "Matrix too big to compute condition numbers\n")
+    end
 
     direct_sol_DDDD = A_DDDD\b_DDDD
     direct_sol_matrix_DDDD = reshape(direct_sol_DDDD,Nx,Ny)
@@ -270,9 +274,12 @@ for k in 3:6
     direct_sol_DDNN = A_DDNN\b_DDNN
     direct_sol_matrix_DDNN = reshape(direct_sol_DDNN,Nx,Ny)
 
-
-    cond_A = cond(Matrix(A_DDNN))
-    write(output, "Condition number of A_DDNN is $cond_A \n")
+    if k <= 6
+        cond_A = cond(Matrix(A_DDNN))
+        write(output, "Condition number of A_DDNN is $cond_A \n")
+    else
+        write(output, "Matrix too big to compute condition numbers\n")
+    end
 
     error_norm = sqrt((u_exact[:] - direct_sol_DDNN)' * H_tilde * (u_exact[:] - direct_sol_DDNN))
     @show error_norm
