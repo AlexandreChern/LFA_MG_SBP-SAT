@@ -131,12 +131,14 @@ rel_errs = []
 iter_errs = []
 # for k in 1:length(h_list_x)
 println("################### BEGIN TEST #########################")
-for k in 6:7
-    
+
+output = open("SBP_iterative_properties.txt", "w")
+for k in 3:6
     println()
     i = j  = k
     println("##########   Starting Test for k = ", k, "   ######################")
-   
+    write(output,"##########   Starting Test for k = $k ######################\n")
+
     hx = h_list_x[i];
     hy = h_list_y[j];
 
@@ -153,17 +155,22 @@ for k in 6:7
     Ny = N_y + 1;
 
     println("Nx = $Nx, Ny=$Ny")
+    write(output, "Nx = $Nx, Ny = $Ny\n")
 
     # 2D operators
     (D1_x, D1_y, D2_x, D2_y, D2, HI_x, HI_y, BS_x, BS_y, HI_tilde, H_tilde, I_Nx, I_Ny, e_E, e_W, e_S, e_N, E_E, E_W, E_S, E_N) = Operators_2d(i,j);
 
 
      # Analytical Solutions
-    analy_sol = u(x,y');
+    # analy_sol = u(x,y');
+
+    u_exact = u(x,y')
+    surface(x,y,u_exact)
 
    
 
     # Forming SAT terms (D,D,D,D)
+    write(output, "Forming it with DDDD first \n\n")
 
     # Penalty Parameters
     tau_E = 13/hx;
@@ -201,12 +208,25 @@ for k in 6:7
     A_DDDD = H_tilde*A;
     b_DDDD = H_tilde*b;
 
+    cond_A = cond(Matrix(A_DDDD))
+    write(output, "Condition number of A_DDDD is $cond_A \n")
+
     direct_sol_DDDD = A_DDDD\b_DDDD
-    direct_sol_matrix_DDDD = reshape(direct_sol,Nx,Ny)
+    direct_sol_matrix_DDDD = reshape(direct_sol_DDDD,Nx,Ny)
+
+    x_DDDD, cg_history_DDDD = cg(A_DDDD,b_DDDD;log=true)
+    write(output, "max iterations is $(cg_history_DDDD.iters) \n")
+    write(output, "final iteration residual is $(cg_history_DDDD.data[:resnorm][end])\n")
 
     surface(x,y,direct_sol_matrix_DDDD)
 
+    error_norm = sqrt((u_exact[:] - direct_sol_DDDD)' * H_tilde * (u_exact[:] - direct_sol_DDDD))
+    @show error_norm
+    write(output, "error norm for (u_exact - direct_sol_DDDD) is $error_norm\n\n")
+
     ## Formulation 2 (D,D,N,N)
+
+    write(output, "Forming it with DDNN now \n\n")
 
     tau_E = 13/hx;
     tau_W = 13/hx;
@@ -248,13 +268,24 @@ for k in 6:7
     b_DDNN = H_tilde*b;
 
     direct_sol_DDNN = A_DDNN\b_DDNN
-    direct_sol_matrix_DDNN = reshape(direct_sol,Nx,Ny)
+    direct_sol_matrix_DDNN = reshape(direct_sol_DDNN,Nx,Ny)
+
+
+    cond_A = cond(Matrix(A_DDNN))
+    write(output, "Condition number of A_DDNN is $cond_A \n")
+
+    error_norm = sqrt((u_exact[:] - direct_sol_DDNN)' * H_tilde * (u_exact[:] - direct_sol_DDNN))
+    @show error_norm
+    write(output, "error norm for (u_exact - direct_sol_DDNN) is $error_norm\n")
 
     surface(x,y,direct_sol_matrix_DDNN)
 
+    x_DDNN, cg_history_DDNN = cg(A_DDNN,b_DDNN;log=true)
+    write(output, "max iterations is $(cg_history_DDNN.iters) \n")
+    write(output, "final iteration residual is $(cg_history_DDNN.data[:resnorm][end])\n")
 
-    u_exact = u(x,y')
-    surface(x,y,u_exact)
+
+   
 
     @show nnz(A) * sizeof(Float64)
 
@@ -269,16 +300,17 @@ for k in 6:7
 
     ## SpMV test
    
-    println("TESTING SpMV vs Matrix_FREE")
-    iter_times = Nx + Ny
+    # println("TESTING SpMV vs Matrix_FREE")
+    # iter_times = Nx + Ny
 
 
 
     ## End Compare Efficiency
     println("##########   Ending Test for k = ", k, "   ######################\n")
-
+    write(output,"##########   Ending Test for k = $k   ######################\n\n")
    
 end
+close(output)
 
 function check_richardson(A,ω)
     return opnorm(Matrix(I,size(A)) - ω*A)

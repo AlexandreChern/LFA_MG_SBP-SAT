@@ -1,0 +1,68 @@
+##########   Starting Test for k = 3 ######################
+Nx = 9, Ny = 9
+Forming it with DDDD first 
+
+Condition number of A_DDDD is 43.67584982116434 
+max iterations is 29 
+final iteration residual is 1.9946562413090056e-7
+error norm for (u_exact - direct_sol_DDDD) is 1.276555755314394e-16
+
+Forming it with DDNN now 
+
+Condition number of A_DDNN is 98.00888355197976 
+error norm for (u_exact - direct_sol_DDNN) is 2.7478614939718373e-16
+max iterations is 44 
+final iteration residual is 3.0689986455434353e-7
+##########   Ending Test for k = 3   ######################
+
+##########   Starting Test for k = 4 ######################
+Nx = 17, Ny = 17
+Forming it with DDDD first 
+
+Condition number of A_DDDD is 172.6656993024065 
+max iterations is 57 
+final iteration residual is 5.993783011834224e-7
+error norm for (u_exact - direct_sol_DDDD) is 7.738198789548453e-16
+
+Forming it with DDNN now 
+
+Condition number of A_DDNN is 365.43048127848 
+error norm for (u_exact - direct_sol_DDNN) is 4.583266023874644e-16
+max iterations is 82 
+final iteration residual is 4.2701481133767645e-7
+##########   Ending Test for k = 4   ######################
+
+##########   Starting Test for k = 5 ######################
+Nx = 33, Ny = 33
+Forming it with DDDD first 
+
+Condition number of A_DDDD is 688.9135841535622 
+max iterations is 111 
+final iteration residual is 1.002882691817332e-6
+error norm for (u_exact - direct_sol_DDDD) is 3.941403299607489e-15
+
+Forming it with DDNN now 
+
+Condition number of A_DDNN is 1413.8108311443843 
+error norm for (u_exact - direct_sol_DDNN) is 3.1722265316457813e-15
+max iterations is 151 
+final iteration residual is 6.503896090927793e-7
+##########   Ending Test for k = 5   ######################
+
+##########   Starting Test for k = 6 ######################
+Nx = 65, Ny = 65
+Forming it with DDDD first 
+
+Condition number of A_DDDD is 2753.9930378920494 
+max iterations is 218 
+final iteration residual is 1.391770477831856e-6
+error norm for (u_exact - direct_sol_DDDD) is 1.508579025858286e-14
+
+Forming it with DDNN now 
+
+Condition number of A_DDNN is 5564.572085984114 
+error norm for (u_exact - direct_sol_DDNN) is 1.693716074331917e-14
+max iterations is 292 
+final iteration residual is 9.842149836723657e-7
+##########   Ending Test for k = 6   ######################
+
