@@ -248,8 +248,8 @@ end
 ipr = 1
 # nx = Int64(512)
 # ny = Int64(512)
-nx = ny = Int64(1024)
-n_level = 9
+nx = ny = Int64(64)
+n_level = 3
 tolerance = Float64(1.0e-10)
 max_iter = Int64(100000)
 
