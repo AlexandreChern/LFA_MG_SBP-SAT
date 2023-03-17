@@ -265,8 +265,27 @@ u_n[nx+1,:] = u_e[nx+1,:]
 compute_residual(nx,ny,dx,dy,f_array,u_n,r_array)
 
 poisson_matrix_ = poisson_matrix(nx,ny,dx,dy)
-reshape(poisson_matrix_ * u_n[:], (nx+1), (nx+1))
+poisson_u_n = reshape(poisson_matrix_ * u_n[:], (nx+1), (nx+1))
 
 @show (r_array[:] - poisson_matrix_ * u_n[:])
 
 manual_residual = reshape((f_array[:] - poisson_matrix_ * u_n[:]),nx+1,ny+1)
+
+V = 1
+
+f_array
+
+u_n
+
+u_n_copy = copy(u_n)
+
+gauss_seidel_mg(nx,ny,dx,dy,f_array,u_n_copy, V)
+
+
+# u_n + (f_array - reshape(poisson_matrix_*u_n[:],nx+1,ny+1)) ./ (-2.0/dx^2 -2.0/dy^2)
+
+L = LowerTriangular(poisson_matrix_)
+U = poisson_matrix_ - L
+
+reshape(L\(f_array[:] - U*u_n[:]), nx+1, ny+1)
+# reshape(u_n[:] + L\(f_array[:] - U*u_n[:]), nx+1, ny+1)
