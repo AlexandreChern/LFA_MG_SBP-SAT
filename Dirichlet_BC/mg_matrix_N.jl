@@ -8,8 +8,8 @@ function compute_residual(nx,ny,dx,dy,f,u_n,r)
     for j in 2:ny for i = 2:nx
         d2udx2 = (u_n[i+1,j] - 2*u_n[i,j] + u_n[i-1,j])/(dx^2)
         d2udy2 = (u_n[i,j+1] - 2*u_n[i,j] + u_n[i,j-1])/(dy^2)
-        # r[i,j] = f[i,j]  - d2udx2 - d2udy2
-        r[i,j] = d2udx2 + d2udy2
+        r[i,j] = f[i,j]  - d2udx2 - d2udy2
+        # r[i,j] = d2udx2 + d2udy2
     end end
 end
 
@@ -208,7 +208,7 @@ end
 #------------------------------------------------------------------------------
 ipr = 1
 
-nx = ny = Int64(4)
+nx = ny = Int64(8)
 n_level = 3
 
 tolerance = Float64(1.0e-10)
@@ -264,12 +264,7 @@ for i = 1:nx+1 for j = 1:ny+1
     end
 end end
 
-# modify f_array to match BC boundary conditions
-for i = 1:nx+1 for j = 1:ny+1
-    if ((i == 1) || (i == nx+1) || (j == 1) || (j == ny+1))
-        f_array[i,j] = u_n[i,j]
-    end
-end end
+
 
 
 u_n[:,1] = u_e[:,1]
@@ -278,15 +273,21 @@ u_n[:, ny+1] = u_e[:, ny+1]
 u_n[1,:] = u_e[1,:]
 u_n[nx+1,:] = u_e[nx+1,:]
 
+# modify f_array to match BC boundary conditions
+for i = 1:nx+1 for j = 1:ny+1
+    if ((i == 1) || (i == nx+1) || (j == 1) || (j == ny+1))
+        f_array[i,j] = u_n[i,j]
+    end
+end end
 
 compute_residual(nx,ny,dx,dy,f_array,u_n,r_array)
 
 poisson_matrix_ = poisson_matrix(nx,ny,dx,dy)
 poisson_u_n = reshape(poisson_matrix_ * u_n[:], (nx+1), (nx+1))
 
-@show (r_array[:] - poisson_matrix_ * u_n[:])
+# @show (r_array[:] - poisson_matrix_ * u_n[:])
 
-r_array - reshape(poisson_matrix_ * u_n[:],nx+1,ny+1)
+r_array - reshape(f_array[:] - poisson_matrix_ * u_n[:],nx+1,ny+1)
 
 
 manual_residual = reshape((f_array[:] - poisson_matrix_ * u_n[:]),nx+1,ny+1)
