@@ -31,6 +31,15 @@ function poisson_matrix(nx,ny,dx,dy)
         end
     end end
 
+    index_count = 0
+    for j in 1:ny+ 1for i in 1:nx + 1
+        index = (j - 1) * (nx+1) + i
+        if (i == 1 || i == nx + 1 || j == 1 || j == ny + 1)
+            poisson_matrix_[index,index] = 1
+            index_count += 1
+        end
+    end end
+    @show index_count
     return poisson_matrix_
 end
 
@@ -282,10 +291,10 @@ u_n_copy = copy(u_n)
 gauss_seidel_mg(nx,ny,dx,dy,f_array,u_n_copy, V)
 
 
-# u_n + (f_array - reshape(poisson_matrix_*u_n[:],nx+1,ny+1)) ./ (-2.0/dx^2 -2.0/dy^2)
+u_n + (f_array - reshape(poisson_matrix_*u_n[:],nx+1,ny+1)) ./ (-2.0/dx^2 -2.0/dy^2)
 
-L = LowerTriangular(poisson_matrix_)
-U = poisson_matrix_ - L
-
+# L = LowerTriangular(poisson_matrix_)
+# U = poisson_matrix_ - L
 reshape(L\(f_array[:] - U*u_n[:]), nx+1, ny+1)
+
 # reshape(u_n[:] + L\(f_array[:] - U*u_n[:]), nx+1, ny+1)
