@@ -208,7 +208,7 @@ end
 #------------------------------------------------------------------------------
 ipr = 1
 
-nx = ny = Int64(8)
+nx = ny = Int64(64)
 n_level = 3
 
 tolerance = Float64(1.0e-10)
@@ -273,6 +273,44 @@ u_n[:, ny+1] = u_e[:, ny+1]
 u_n[1,:] = u_e[1,:]
 u_n[nx+1,:] = u_e[nx+1,:]
 
+
+function reset_uf(u_n, f_array)
+    # u_n = Array{Float64}(undef, nx+1, ny+1)
+
+    for i = 1:nx+1 for j = 1:ny+1
+        if ipr == 1
+            u_e[i,j] = (x[i]^2 - 1.0)*(y[j]^2 - 1.0)
+    
+            f_array[i,j]  = -2.0*(2.0 - x[i]^2 - y[j]^2)
+    
+            u_n[i,j] = 0.0
+        end
+    
+        if ipr == 2
+            u_e[i,j] = sin(2.0*pi*x[i]) * sin(2.0*pi*y[j]) +
+                       c1*sin(16.0*pi*x[i]) * sin(16.0*pi*y[j])
+    
+            f_array[i,j] = 4.0*c2*sin(2.0*pi*x[i]) * sin(2.0*pi*y[j]) +
+                     c2*sin(16.0*pi*x[i]) * sin(16.0*pi*y[j])
+    
+            u_n[i,j] = 0.0
+        end
+    end end
+
+    u_n[:,1] = u_e[:,1]
+    u_n[:, ny+1] = u_e[:, ny+1]
+
+    u_n[1,:] = u_e[1,:]
+    u_n[nx+1,:] = u_e[nx+1,:]
+
+    for i = 1:nx+1 for j = 1:ny+1
+        if ((i == 1) || (i == nx+1) || (j == 1) || (j == ny+1))
+            f_array[i,j] = u_n[i,j]
+        end
+    end end
+end
+
+
 # modify f_array to match BC boundary conditions
 for i = 1:nx+1 for j = 1:ny+1
     if ((i == 1) || (i == nx+1) || (j == 1) || (j == ny+1))
@@ -287,10 +325,10 @@ poisson_u_n = reshape(poisson_matrix_ * u_n[:], (nx+1), (nx+1))
 
 # @show (r_array[:] - poisson_matrix_ * u_n[:])
 
-r_array - reshape(f_array[:] - poisson_matrix_ * u_n[:],nx+1,ny+1)
-
+# r_array - reshape(f_array[:] - poisson_matrix_ * u_n[:],nx+1,ny+1)
 
 manual_residual = reshape((f_array[:] - poisson_matrix_ * u_n[:]),nx+1,ny+1)
+@assert manual_residual ≈ r_array
 
 V = 1
 
@@ -303,10 +341,84 @@ u_n_copy = copy(u_n)
 gauss_seidel_mg(nx,ny,dx,dy,f_array,u_n_copy, V)
 
 
-u_n + (f_array - reshape(poisson_matrix_*u_n[:],nx+1,ny+1)) ./ (-2.0/dx^2 -2.0/dy^2)
+# u_n + (f_array - reshape(poisson_matrix_*u_n[:],nx+1,ny+1)) ./ (-2.0/dx^2 -2.0/dy^2)
 
 L = LowerTriangular(poisson_matrix_)
 U = poisson_matrix_ - L
+u_n_new = reshape(L\(f_array[:] - U*u_n[:]), nx+1, ny+1)
+
+@assert u_n_copy ≈ u_n_new
+# reshape(u_n[:] + L\(f_array[:] - U*u_n[:]), nx+1, ny+1)
+
+
+# Starting multigrid
+
+u_mg = Matrix{Float64}[]
+f_mg = Matrix{Float64}[]
+r = zeros(Float64,nx+1, ny+1)
+
+push!(u_mg, u_n)
+push!(f_mg, f_array)
+
+# compute initial residual
+
+r[:] = f_array[:] - poisson_matrix_ * u_n[:]
+
+
+# Compute initial L-2 norm
+rms = compute_l2norm(nx,ny,r)
+
+init_rms = rms
+
+print("0", " ", rms, " ", rms/init_rms)
+
+if nx < (2^n_level)
+    print("Number of levels exceeds the possible nmber.\n")
+end
+
+# allocate memory for grid size at different levels
+
+lnx = zeros(Int64, n_level)
+lnx = zeros(Int64, n_level)
+ldx = zeros(Float64, n_level)
+ldy = zeros(Float64, n_level)
+
+# initialize the mesh details at fine level
+lnx[1] = nx
+lny[1] = ny
+ldx[1] = dx
+ldy[1] = dy
+
+# calclate mesh details for coarse levels and allocate matrix
+# numerical solution and error restricted from upper level
+
+ for i in 2:n_level
+    lnx[i] = Int64(lnx[i-1]/2)
+    lny[i] = Int64(lny[i-1]/2)
+    ldx[i] = ldx[i-1]*2
+    ldy[i] = ldy[i-1]*2
+ end
+
+ # allocate matrix for storage at fine level
+ # residual at fine level is already defined at global level
+
+ pro_fine = zeros(Float64, lnx[1]+1, lny[1]+1)
+
+ # temporary residual which is restricted to coarse mesh error
+ # the size keeps on changing
+
+temp_residual = zeros(Float64, lnx[1]+1, lny[1]+1)
+
+u_n .= reshape(L\(f_array[:] - U*u_n[:]), nx+1, ny+1)
 reshape(L\(f_array[:] - U*u_n[:]), nx+1, ny+1)
 
-# reshape(u_n[:] + L\(f_array[:] - U*u_n[:]), nx+1, ny+1)
+maximum_iterations = 10
+# for iteration_count = 1:maximum_iterations
+    for i in 1:v1
+        u_mg[1] .= reshape(L\(f_array[:] - U*u_mg[1][:]), nx+1, ny+1)
+    end
+
+    reshape((f_array[:] - poisson_matrix_ * u_mg[1][:]),nx+1,ny+1)
+
+
+# end
