@@ -176,27 +176,27 @@ end
     ⠀⠀⠀⢱⠀
     ⠀⠀⠀⠀⠁
 """
-function prolongation_matrix(nxf,nyf,nxc,nyc)
+function prolongation_matrix(nxc,nyc,nxf,nyf)
     prolongation_matrix_ = spzeros((nxf+1)*(nyf+1),(nxc+1)*(nyc+1))
     for j in 1:nyc+1
         for i in 1:nxc+1
             indexc = (j-1)* (nxc+1) + i
             indexf = (2*j-1 -1) * (nxf+1) + (2*i-1) # careful about this index
             # @show (indexc, indexf)
-            prolongation_matrix_[indexf,indexc] = (4)/16.0
+            prolongation_matrix_[indexf,indexc] = 1.0  # direct injection instead of(4)/16.0
             if 2 <= i <= nxc
-                prolongation_matrix_[indexf+1,indexc] = (2)/16.0
-                prolongation_matrix_[indexf-1,indexc] = (2)/16.0
+                prolongation_matrix_[indexf+1,indexc] = 0.5 #(2)/16.0
+                prolongation_matrix_[indexf-1,indexc] = 0.5 #(2)/16.0
             end
             if 2 <= j <= nxc
-                prolongation_matrix_[indexf+nyf+1,indexc] = (2)/16.0
-                prolongation_matrix_[indexf-nyf-1,indexc] = (2)/16.0
+                prolongation_matrix_[indexf+nyf+1,indexc] = 0.5 #(2)/16.0
+                prolongation_matrix_[indexf-nyf-1,indexc] = 0.5 #(2)/16.0
             end
             if (2 <= i <= nxc) && (2 <= j <= nyc)
-                prolongation_matrix_[indexf-nyf-1-1,indexc] = (1)/16.0
-                prolongation_matrix_[indexf-nyf-1+1,indexc] = (1)/16.0
-                prolongation_matrix_[indexf+nyf+1+1,indexc] = (1)/16.0
-                prolongation_matrix_[indexf+nyf+1-1,indexc] = (1)/16.0
+                prolongation_matrix_[indexf-nyf-1-1,indexc] = 0.25 #(1)/16.0
+                prolongation_matrix_[indexf-nyf-1+1,indexc] = 0.25 #(1)/16.0
+                prolongation_matrix_[indexf+nyf+1+1,indexc] = 0.25 #(1)/16.0
+                prolongation_matrix_[indexf+nyf+1-1,indexc] = 0.25 #(1)/16.0
             end
         end
     end
@@ -482,6 +482,13 @@ maximum_iterations = 10
             end
         end
 
+        for k = n_level:-1:2
+            # temporary matrix for correction storage at the (k-1)th level
+            # solution prolongated from the kth level to the (k-1)th level
+            prol_fine = zeros(Float64, lnx[k-1]+1, lny[k-1]+1)
+
+            # prolongate solution from (k)th level to (k-1)th level
+            prol_fine[:] = prolongation_matrix(lnx[k],lny[k],lnx[k-1],lny[k-1]) * u_mg[k][:]
 
 
     end
