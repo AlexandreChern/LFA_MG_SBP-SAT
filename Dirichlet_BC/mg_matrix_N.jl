@@ -355,10 +355,16 @@ u_n_new = reshape(L\(f_array[:] - U*u_n[:]), nx+1, ny+1)
 
 u_mg = Matrix{Float64}[]
 f_mg = Matrix{Float64}[]
+A_mg = Matrix{Float64}[]
+L_mg = Matrix{Float64}[]
+U_mg = Matrix{Float64}[]
 r = zeros(Float64,nx+1, ny+1)
 
 push!(u_mg, u_n)
 push!(f_mg, f_array)
+push!(A_mg, poisson_matrix_)
+push!(L_mg, L)
+push!(U_mg, U)
 
 # compute initial residual
 
@@ -392,25 +398,32 @@ ldy[1] = dy
 # calclate mesh details for coarse levels and allocate matrix
 # numerical solution and error restricted from upper level
 
- for i in 2:n_level
+for i in 2:n_level
     lnx[i] = Int64(lnx[i-1]/2)
     lny[i] = Int64(lny[i-1]/2)
     ldx[i] = ldx[i-1]*2
     ldy[i] = ldy[i-1]*2
- end
 
- # allocate matrix for storage at fine level
- # residual at fine level is already defined at global level
+    # allocate matrix for storage at coarse levels
+    fc = zeros(Float64, lnx[i]+1, lny[i]+1)
+    unc = zeros(Float64, lnx[i]+1, lny[i]+1)
 
- pro_fine = zeros(Float64, lnx[1]+1, lny[1]+1)
+    push!(u_mg, unc)
+    push!(f_mg, fc)
+end
 
- # temporary residual which is restricted to coarse mesh error
- # the size keeps on changing
+# allocate matrix for storage at fine level
+# residual at fine level is already defined at global level
+
+pro_fine = zeros(Float64, lnx[1]+1, lny[1]+1)
+
+# temporary residual which is restricted to coarse mesh error
+# the size keeps on changing
 
 temp_residual = zeros(Float64, lnx[1]+1, lny[1]+1)
 
-u_n .= reshape(L\(f_array[:] - U*u_n[:]), nx+1, ny+1)
-reshape(L\(f_array[:] - U*u_n[:]), nx+1, ny+1)
+# u_n .= reshape(L\(f_array[:] - U*u_n[:]), nx+1, ny+1)
+# reshape(L\(f_array[:] - U*u_n[:]), nx+1, ny+1)
 
 maximum_iterations = 10
 # for iteration_count = 1:maximum_iterations
@@ -418,7 +431,57 @@ maximum_iterations = 10
         u_mg[1] .= reshape(L\(f_array[:] - U*u_mg[1][:]), nx+1, ny+1)
     end
 
-    reshape((f_array[:] - poisson_matrix_ * u_mg[1][:]),nx+1,ny+1)
+    # calculate residual
+    r = reshape((f_array[:] - poisson_matrix_ * u_mg[1][:]),nx+1,ny+1)
 
+    # compute l2norm of the residual
+    rms = compute_l2norm(lnx[1],lny[1],r)
+
+    # write results only for the finest residual
+    # ...
+
+    # count = iteration_count
+    # count = iteration_count
+
+
+    # from second level to coarsest level
+    for k = 2:n_level
+        if k == 2
+            # for second level temporary residual is taken from fine mesh level
+            temp_residual = r
+        else
+            # from third level onwards residual is computed for (k-1) level
+            # which will be restricted to kth level error
+            temp_residual = zeros(Float64, lnx[k-1]+1, lny[k-1]+1)
+            compute_residual(lnx[k-1], lny[k-1], ldx[k-1], ldy[k-1],
+                        f_mg[k-1], u_mg[k-1], temp_residual)
+        end
+        # restriction(lnx[k-1], lny[k-1], lnx[k], lny[k], temp_residual,
+        #                 f_mg[k])
+        # f_mg[k][:] ≈ restriction_matrix(lnx[k-1],lny[k-1],lnx[k],lny[k]) * temp_residual[:]
+        f_mg[k][:] = restriction_matrix(lnx[k-1],lny[k-1],lnx[k],lny[k]) * temp_residual[:]
+
+        # solution at kth level to zero
+        u_mg[k][:,:] = zeros(lnx[k]+1, lny[k]+1)
+        
+        # formulating Poisson matrix
+        push!(A_mg,poisson_matrix(lnx[k],lny[k],ldx[k],ldy[k]))
+        push!(L_mg, LowerTriangular(A_mg[k]))
+        push!(U_mg, A_mg[k] - L_mg[k])
+
+        # solve (∇^-λ^2)ϕ = ϵ on coarse grid (kthe level)
+        if k < n_level
+            for i in 1:v1
+                u_mg[k] .= reshape(L_mg[k]\(f_mg[k][:] - U_mg[k]*u_mg[k][:]),lnx[k]+1,lny[k]+1)
+            end
+        elseif k == n_level
+            for i in 1:v2
+                u_mg[k] .= reshape(L_mg[k]\(f_mg[k][:] - U_mg[k]*u_mg[k][:]),lnx[k]+1,lny[k]+1)
+            end
+        end
+
+
+
+    end
 
 # end
