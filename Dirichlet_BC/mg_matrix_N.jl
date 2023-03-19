@@ -350,8 +350,8 @@ u_n_new = reshape(L\(f_array[:] - U*u_n[:]), nx+1, ny+1)
 @assert u_n_copy ≈ u_n_new
 # reshape(u_n[:] + L\(f_array[:] - U*u_n[:]), nx+1, ny+1)
 
-
-# Starting multigrid
+#######################################################################
+## Starting multigrid
 
 u_mg = Matrix{Float64}[]
 f_mg = Matrix{Float64}[]
@@ -465,9 +465,11 @@ maximum_iterations = 10
         u_mg[k][:,:] = zeros(lnx[k]+1, lny[k]+1)
         
         # formulating Poisson matrix
-        push!(A_mg,poisson_matrix(lnx[k],lny[k],ldx[k],ldy[k]))
-        push!(L_mg, LowerTriangular(A_mg[k]))
-        push!(U_mg, A_mg[k] - L_mg[k])
+        if length(A_mg) < k # pushing A_mg L_mg U_mg if they are not formulated
+            push!(A_mg,poisson_matrix(lnx[k],lny[k],ldx[k],ldy[k]))
+            push!(L_mg, LowerTriangular(A_mg[k]))
+            push!(U_mg, A_mg[k] - L_mg[k])
+        end
 
         # solve (∇^-λ^2)ϕ = ϵ on coarse grid (kthe level)
         if k < n_level
