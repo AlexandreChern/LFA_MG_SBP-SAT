@@ -32,7 +32,7 @@ function poisson_matrix(nx,ny,dx,dy)
     end end
 
     index_count = 0
-    for j in 1:ny+ 1for i in 1:nx + 1
+    for j in 1:ny+ 1 for i in 1:nx + 1
         index = (j - 1) * (nx+1) + i
         if (i == 1 || i == nx + 1 || j == 1 || j == ny + 1)
             poisson_matrix_[index,:] .= 0
@@ -41,6 +41,36 @@ function poisson_matrix(nx,ny,dx,dy)
         end
     end end
     # @show index_count
+    return poisson_matrix_
+end
+
+
+function poisson_matrix_new(nx,ny,dx,dy)
+    poisson_matrix_ = spzeros((nx+1)*(ny+1),(nx+1)*(ny+1))
+    Dxy = -2 * (1/dx^2 + 1/dy^2)
+    Dx = 1 / dx^2
+    Dy = 1 / dy^2
+
+    poisson_matrix_[1,1] = Dxy
+    poisson_matrix_[end,end] = Dxy
+    for i in 2:(nx+1)*(ny+1)-1
+        poisson_matrix_[i,i] = (Dxy)
+        poisson_matrix_[i,i+1] = Dy
+        poisson_matrix_[i,i-1] = Dy
+    end
+
+    # for j in 2:(nx+1)*(ny+1)-1
+
+    # end
+    index_count = 0
+    for j in 1:ny+ 1 for i in 1:nx + 1
+        index = (j - 1) * (nx+1) + i
+        if (i == 1 || i == nx + 1 || j == 1 || j == ny + 1)
+            poisson_matrix_[index,:] .= 0
+            poisson_matrix_[index,index] = 1
+            index_count += 1
+        end
+    end end
     return poisson_matrix_
 end
 
