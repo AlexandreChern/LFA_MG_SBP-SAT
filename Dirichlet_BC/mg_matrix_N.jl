@@ -490,6 +490,18 @@ maximum_iterations = 10
             # prolongate solution from (k)th level to (k-1)th level
             prol_fine[:] = prolongation_matrix(lnx[k],lny[k],lnx[k-1],lny[k-1]) * u_mg[k][:]
 
+            # update u_mg
+
+            for j = 2:lnx[k-1] for i = 2:lny[k-1]
+                u_mg[k-1][i,j] = u_mg[k-1][i,j] + prol_fine[i,j]
+            end end
+
+            # Gauss seidel iteration
+            for i in 1:v3
+                u_mg[k-1] .= reshape(L_mg[k-1]\(f_mg[k-1][:] - U_mg[k-1]*u_mg[k-1][:]),lnx[k-1]+1,lny[k-1]+1)
+            end
+
+        end
 
     end
 
