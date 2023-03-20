@@ -14,7 +14,7 @@ function compute_residual(nx,ny,dx,dy,f,u_n,r)
 end
 
 
-function poisson_matrix(nx,ny,dx,dy)
+function poisson_matrix_old(nx,ny,dx,dy)
     poisson_matrix_ = spzeros((nx+1)*(ny+1),(nx+1)*(ny+1))
     Dxy = -2 * (1/dx^2 + 1/dy^2)
     Dx = 1 / dx^2
@@ -45,23 +45,30 @@ function poisson_matrix(nx,ny,dx,dy)
 end
 
 
-function poisson_matrix_new(nx,ny,dx,dy)
-    poisson_matrix_ = spzeros((nx+1)*(ny+1),(nx+1)*(ny+1))
-    Dxy = -2 * (1/dx^2 + 1/dy^2)
+function poisson_matrix(nx,ny,dx,dy)
     Dx = 1 / dx^2
     Dy = 1 / dy^2
 
-    poisson_matrix_[1,1] = Dxy
-    poisson_matrix_[end,end] = Dxy
-    for i in 2:(nx+1)*(ny+1)-1
-        poisson_matrix_[i,i] = (Dxy)
-        poisson_matrix_[i,i+1] = Dy
-        poisson_matrix_[i,i-1] = Dy
+    Dxx_matrix_ = spzeros(nx+1,nx+1)
+    # Dxx_matrix_[1,1] = -2
+    Dxx_matrix_[end,end] = -2 * Dx
+    for i in 1:nx
+        Dxx_matrix_[i,i] = -2 * Dx
+        Dxx_matrix_[i,i+1] = 1 * Dx
+        Dxx_matrix_[i+1,i] = 1 * Dx
     end
 
-    # for j in 2:(nx+1)*(ny+1)-1
-
-    # end
+    Dyy_matrix_ = spzeros(ny+1,ny+1)
+    # Dxx_matrix_[1,1] = -2
+    Dyy_matrix_[end,end] = -2 * Dy
+    for i in 1:nx
+        Dyy_matrix_[i,i] = -2 * Dy
+        Dyy_matrix_[i,i+1] = 1 * Dy
+        Dyy_matrix_[i+1,i] = 1 * Dy
+    end
+    I_Ny = sparse(I,ny+1,ny+1)
+    I_Nx = sparse(I,nx+1,nx+1)
+    poisson_matrix_ = kron(I_Nx,Dyy_matrix_) + kron(Dxx_matrix_,I_Ny)
     index_count = 0
     for j in 1:ny+ 1 for i in 1:nx + 1
         index = (j - 1) * (nx+1) + i
@@ -71,6 +78,7 @@ function poisson_matrix_new(nx,ny,dx,dy)
             index_count += 1
         end
     end end
+    # @show index_count
     return poisson_matrix_
 end
 
