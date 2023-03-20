@@ -40,7 +40,7 @@ function poisson_matrix(nx,ny,dx,dy)
             index_count += 1
         end
     end end
-    @show index_count
+    # @show index_count
     return poisson_matrix_
 end
 
@@ -146,9 +146,31 @@ end
 
 
 
-function initialize_uf(u_n, f_array)
+# function initialize_uf(u_n, f_array)
+function initialize_uf(nx,ny)
     # u_n = Array{Float64}(undef, nx+1, ny+1)
-    nx, ny = size(u_n)[1]-1, size(u_n)[2]-1
+    # nx, ny = size(u_n)[1]-1, size(u_n)[2]-1
+    u_n = Array{Float64}(undef,nx+1,ny+1)
+    f_array = Array{Float64}(undef,nx+1,ny+1)
+    u_e = Array{Float64}(undef, nx+1, ny+1)
+
+    x_l = 0.0
+    x_r = 1.0
+    y_b = 0.0
+    y_t = 1.0
+
+    x = Array{Float64}(undef, nx+1)
+    y = Array{Float64}(undef, ny+1)
+    u_e = Array{Float64}(undef, nx+1, ny+1)
+    f = Array{Float64}(undef, nx+1, ny+1)
+    u_n = Array{Float64}(undef, nx+1, ny+1)
+
+    for i = 1:nx+1
+        x[i] = x_l + dx*(i-1)
+    end
+    for i = 1:ny+1
+        y[i] = y_b + dy*(i-1)
+    end
 
     for i = 1:nx+1 for j = 1:ny+1
         if ipr == 1
@@ -181,6 +203,8 @@ function initialize_uf(u_n, f_array)
             f_array[i,j] = u_n[i,j]
         end
     end end
+
+    return u_n, f_array
 end
 
 
@@ -188,170 +212,175 @@ end
 #######################################################################
 ## Starting multigrid
 
+function mg_matrix_N(nx,ny,n_level)
+    maximum_iterations = 10000 # set maximum_iterations
+    u_n, f_array = initialize_uf(nx,ny)
+    dx = 1.0 ./nx
+    dy = 1.0 ./ny
+    poisson_matrix_ = poisson_matrix(nx,ny,dx,dy)
+    u_mg = Matrix{Float64}[]
+    f_mg = Matrix{Float64}[]
+    A_mg = SparseMatrixCSC{Float64, Int64}[]
+    L_mg = LowerTriangular{Float64, SparseMatrixCSC{Float64, Int64}}[]
+    U_mg = UpperTriangular{Float64, SparseMatrixCSC{Float64, Int64}}[]
+    r = zeros(Float64,nx+1, ny+1)
 
-u_mg = Matrix{Float64}[]
-f_mg = Matrix{Float64}[]
-A_mg = SparseMatrixCSC{Float64, Int64}[]
-L_mg = LowerTriangular{Float64, SparseMatrixCSC{Float64, Int64}}[]
-U_mg = UpperTriangular{Float64, SparseMatrixCSC{Float64, Int64}}[]
-r = zeros(Float64,nx+1, ny+1)
+    push!(u_mg, u_n)
+    push!(f_mg, f_array)
+    push!(A_mg, poisson_matrix_)
+    L = LowerTriangular(poisson_matrix_)
+    # U = poisson_matrix_ - L
+    U = copy(UpperTriangular(poisson_matrix_)) #Can not directly change the UpperTriangular(poisson_matrix_)
+    for i in 1:size(U)[1]
+        U[i,i] = 0
+    end
+    push!(L_mg, L)
+    push!(U_mg, U)
 
-push!(u_mg, u_n)
-push!(f_mg, f_array)
-push!(A_mg, poisson_matrix_)
-L = LowerTriangular(poisson_matrix_)
-# U = poisson_matrix_ - L
-U = copy(UpperTriangular(poisson_matrix_)) #Can not directly change the UpperTriangular(poisson_matrix_)
-for i in 1:size(U)[1]
-    U[i,i] = 0
-end
-push!(L_mg, L)
-push!(U_mg, U)
+    # compute initial residual
 
-# compute initial residual
-
-r[:] = f_array[:] - poisson_matrix_ * u_n[:]
+    r[:] = f_array[:] - A_mg[1]*u_n[:]
 
 
-# Compute initial L-2 norm
-rms = compute_l2norm(nx,ny,r)
+    # Compute initial L-2 norm
+    rms = compute_l2norm(nx,ny,r)
 
-init_rms = rms
+    init_rms = rms
 
-print("0", " ", rms, " ", rms/init_rms)
+    print("0", " ", rms, " ", rms/init_rms)
 
-if nx < (2^n_level)
-    print("Number of levels exceeds the possible nmber.\n")
-end
-
-# allocate memory for grid size at different levels
-
-lnx = zeros(Int64, n_level)
-lny = zeros(Int64, n_level)
-ldx = zeros(Float64, n_level)
-ldy = zeros(Float64, n_level)
-
-# initialize the mesh details at fine level
-lnx[1] = nx
-lny[1] = ny
-ldx[1] = dx
-ldy[1] = dy
-
-# calclate mesh details for coarse levels and allocate matrix
-# numerical solution and error restricted from upper level
-
-for i in 2:n_level
-    lnx[i] = Int64(lnx[i-1]/2)
-    lny[i] = Int64(lny[i-1]/2)
-    ldx[i] = ldx[i-1]*2
-    ldy[i] = ldy[i-1]*2
-
-    # allocate matrix for storage at coarse levels
-    fc = zeros(Float64, lnx[i]+1, lny[i]+1)
-    unc = zeros(Float64, lnx[i]+1, lny[i]+1)
-
-    push!(u_mg, unc)
-    push!(f_mg, fc)
-end
-
-# allocate matrix for storage at fine level
-# residual at fine level is already defined at global level
-
-pro_fine = zeros(Float64, lnx[1]+1, lny[1]+1)
-
-# temporary residual which is restricted to coarse mesh error
-# the size keeps on changing
-
-temp_residual = zeros(Float64, lnx[1]+1, lny[1]+1)
-
-# u_n .= reshape(L\(f_array[:] - U*u_n[:]), nx+1, ny+1)
-# reshape(L\(f_array[:] - U*u_n[:]), nx+1, ny+1)
-
-maximum_iterations = 10
-for iteration_count = 1:maximum_iterations
-    for i in 1:v1
-        u_mg[1] .= reshape(L_mg[1]\(f_mg[1][:] - U_mg[1]*u_mg[1][:]), nx+1, ny+1)
+    if nx < (2^n_level)
+        print("Number of levels exceeds the possible nmber.\n")
     end
 
-    # calculate residual
-    r = reshape((f_array[:] - poisson_matrix_ * u_mg[1][:]),nx+1,ny+1)
+    # allocate memory for grid size at different levels
 
-    # compute l2norm of the residual
-    rms = compute_l2norm(lnx[1],lny[1],r)
+    lnx = zeros(Int64, n_level)
+    lny = zeros(Int64, n_level)
+    ldx = zeros(Float64, n_level)
+    ldy = zeros(Float64, n_level)
 
-    # write results only for the finest residual
-    # ...
+    # initialize the mesh details at fine level
+    lnx[1] = nx
+    lny[1] = ny
+    ldx[1] = dx
+    ldy[1] = dy
 
-    # count = iteration_count
-    # count = iteration_count
-    @show (rms)
-    if (rms/init_rms) <= tolerance
-        break
+    # calclate mesh details for coarse levels and allocate matrix
+    # numerical solution and error restricted from upper level
+
+    for i in 2:n_level
+        lnx[i] = Int64(lnx[i-1]/2)
+        lny[i] = Int64(lny[i-1]/2)
+        ldx[i] = ldx[i-1]*2
+        ldy[i] = ldy[i-1]*2
+
+        # allocate matrix for storage at coarse levels
+        fc = zeros(Float64, lnx[i]+1, lny[i]+1)
+        unc = zeros(Float64, lnx[i]+1, lny[i]+1)
+
+        push!(u_mg, unc)
+        push!(f_mg, fc)
     end
 
-    # from second level to coarsest level
-    for k = 2:n_level
-        if k == 2
-            # for second level temporary residual is taken from fine mesh level
-            temp_residual = r
-        else
-            # from third level onwards residual is computed for (k-1) level
-            # which will be restricted to kth level error
-            temp_residual = zeros(Float64, lnx[k-1]+1, lny[k-1]+1)
-            compute_residual(lnx[k-1], lny[k-1], ldx[k-1], ldy[k-1],
-                        f_mg[k-1], u_mg[k-1], temp_residual)
-        end
-        # restriction(lnx[k-1], lny[k-1], lnx[k], lny[k], temp_residual,
-        #                 f_mg[k])
-        # f_mg[k][:] ≈ restriction_matrix(lnx[k-1],lny[k-1],lnx[k],lny[k]) * temp_residual[:]
-        @show k
-        f_mg[k][:] = restriction_matrix(lnx[k-1],lny[k-1],lnx[k],lny[k]) * temp_residual[:]
+    # allocate matrix for storage at fine level
+    # residual at fine level is already defined at global level
 
-        # solution at kth level to zero
-        u_mg[k][:,:] = zeros(lnx[k]+1, lny[k]+1)
-        
-        # formulating Poisson matrix
-        if length(A_mg) < k # pushing A_mg L_mg U_mg if they are not formulated
-            push!(A_mg,poisson_matrix(lnx[k],lny[k],ldx[k],ldy[k]))
-            push!(L_mg, LowerTriangular(A_mg[k]))
-            U = copy(UpperTriangular(A_mg[k])) #Can not directly change the UpperTriangular(poisson_matrix_)
-            for i in 1:size(U)[1]
-                U[i,i] = 0
-            end
-            push!(U_mg, U)
+    prol_fine = zeros(Float64, lnx[1]+1, lny[1]+1)
+
+    # temporary residual which is restricted to coarse mesh error
+    # the size keeps on changing
+
+    temp_residual = zeros(Float64, lnx[1]+1, lny[1]+1)
+
+    # u_n .= reshape(L\(f_array[:] - U*u_n[:]), nx+1, ny+1)
+    # reshape(L\(f_array[:] - U*u_n[:]), nx+1, ny+1)
+
+    for iteration_count = 1:maximum_iterations
+        for i in 1:v1
+            u_mg[1] .= reshape(L_mg[1]\(f_mg[1][:] - U_mg[1]*u_mg[1][:]), nx+1, ny+1)
         end
 
-        # solve (∇^-λ^2)ϕ = ϵ on coarse grid (kthe level)
-        if k < n_level
-            for i in 1:v1
-                u_mg[k] .= reshape(L_mg[k]\(f_mg[k][:] - U_mg[k]*u_mg[k][:]),lnx[k]+1,lny[k]+1)
+        # calculate residual
+        r = reshape((f_array[:] - poisson_matrix_ * u_mg[1][:]),nx+1,ny+1)
+
+        # compute l2norm of the residual
+        rms = compute_l2norm(lnx[1],lny[1],r)
+
+        # write results only for the finest residual
+        # ...
+
+        # count = iteration_count
+        # count = iteration_count
+        @show (rms)
+        if (rms/init_rms) <= tolerance
+            break
+        end
+
+        # from second level to coarsest level
+        for k = 2:n_level
+            if k == 2
+                # for second level temporary residual is taken from fine mesh level
+                temp_residual = r
+            else
+                # from third level onwards residual is computed for (k-1) level
+                # which will be restricted to kth level error
+                temp_residual = zeros(Float64, lnx[k-1]+1, lny[k-1]+1)
+                compute_residual(lnx[k-1], lny[k-1], ldx[k-1], ldy[k-1],
+                            f_mg[k-1], u_mg[k-1], temp_residual)
             end
-        elseif k == n_level
-            for i in 1:v2
-                u_mg[k] .= reshape(L_mg[k]\(f_mg[k][:] - U_mg[k]*u_mg[k][:]),lnx[k]+1,lny[k]+1)
+            # restriction(lnx[k-1], lny[k-1], lnx[k], lny[k], temp_residual,
+            #                 f_mg[k])
+            # f_mg[k][:] ≈ restriction_matrix(lnx[k-1],lny[k-1],lnx[k],lny[k]) * temp_residual[:]
+            # @show k
+            f_mg[k][:] = restriction_matrix(lnx[k-1],lny[k-1],lnx[k],lny[k]) * temp_residual[:]
+
+            # solution at kth level to zero
+            u_mg[k][:,:] = zeros(lnx[k]+1, lny[k]+1)
+            
+            # formulating Poisson matrix
+            if length(A_mg) < k # pushing A_mg L_mg U_mg if they are not formulated
+                push!(A_mg,poisson_matrix(lnx[k],lny[k],ldx[k],ldy[k]))
+                push!(L_mg, LowerTriangular(A_mg[k]))
+                U = copy(UpperTriangular(A_mg[k])) #Can not directly change the UpperTriangular(poisson_matrix_)
+                for i in 1:size(U)[1]
+                    U[i,i] = 0
+                end
+                push!(U_mg, U)
+            end
+
+            # solve (∇^-λ^2)ϕ = ϵ on coarse grid (kthe level)
+            if k < n_level
+                for i in 1:v1
+                    u_mg[k] .= reshape(L_mg[k]\(f_mg[k][:] - U_mg[k]*u_mg[k][:]),lnx[k]+1,lny[k]+1)
+                end
+            elseif k == n_level
+                for i in 1:v2
+                    u_mg[k] .= reshape(L_mg[k]\(f_mg[k][:] - U_mg[k]*u_mg[k][:]),lnx[k]+1,lny[k]+1)
+                end
             end
         end
-    end
 
 
-    # sweep from coarsest grid to finest grid
-    for k = n_level:-1:2
-        # temporary matrix for correction storage at the (k-1)th level
-        # solution prolongated from the kth level to the (k-1)th level
-        prol_fine = zeros(Float64, lnx[k-1]+1, lny[k-1]+1)
+        # sweep from coarsest grid to finest grid
+        for k = n_level:-1:2
+            # temporary matrix for correction storage at the (k-1)th level
+            # solution prolongated from the kth level to the (k-1)th level
+            prol_fine = zeros(Float64, lnx[k-1]+1, lny[k-1]+1)
 
-        # prolongate solution from (k)th level to (k-1)th level
-        prol_fine[:] = prolongation_matrix(lnx[k],lny[k],lnx[k-1],lny[k-1]) * u_mg[k][:]
+            # prolongate solution from (k)th level to (k-1)th level
+            prol_fine[:] = prolongation_matrix(lnx[k],lny[k],lnx[k-1],lny[k-1]) * u_mg[k][:]
 
-        # update u_mg
+            # update u_mg
 
-        for j = 2:lnx[k-1] for i = 2:lny[k-1]
-            u_mg[k-1][i,j] = u_mg[k-1][i,j] + prol_fine[i,j]
-        end end
+            for j = 2:lnx[k-1] for i = 2:lny[k-1]
+                u_mg[k-1][i,j] = u_mg[k-1][i,j] + prol_fine[i,j]
+            end end
 
-        # Gauss seidel iteration
-        for i in 1:v3
-            u_mg[k-1] .= reshape(L_mg[k-1]\(f_mg[k-1][:] - U_mg[k-1]*u_mg[k-1][:]),lnx[k-1]+1,lny[k-1]+1)
+            # Gauss seidel iteration
+            for i in 1:v3
+                u_mg[k-1] .= reshape(L_mg[k-1]\(f_mg[k-1][:] - U_mg[k-1]*u_mg[k-1][:]),lnx[k-1]+1,lny[k-1]+1)
+            end
         end
     end
 end
