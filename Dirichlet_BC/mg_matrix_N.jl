@@ -57,37 +57,6 @@ end
 
 
 
-function restriction(nxf, nyf, nxc, nyc, r, ec)
-
-    for j = 2:nyc for i = 2:nxc
-        # grid index for fine grid for the same coarse point
-        center = 4.0*r[2*i-1, 2*j-1]
-        # E, W, N, S with respect to coarse grid point in fine grid
-        grid = 2.0*(r[2*i-1, 2*j-1+1] + r[2*i-1, 2*j-1-1] +
-                    r[2*i-1+1, 2*j-1] + r[2*i-1-1, 2*j-1])
-        # NE, NW, SE, SW with respect to coarse grid point in fine grid
-        corner = 1.0*(r[2*i-1+1, 2*j-1+1] + r[2*i-1+1, 2*j-1-1] +
-                      r[2*i-1-1, 2*j-1+1] + r[2*i-1-1, 2*j-1-1])
-        # restriction using trapezoidal rule
-        ec[i,j] = (center + grid + corner)/16.0
-    end end
-
-    # restriction for boundary points bottom and top
-    for j = 1:nxc+1
-        # bottom boundary i = 1
-        ec[1,j] = r[1, 2*j-1]
-        # top boundary i = ny_coarse+1
-        ec[nyc+1,j] = r[nyf+1, 2*j-1]
-    end
-
-    # restriction for boundary poinys left and right
-    for i = 1:nyc+1
-        # left boundary j = 1
-        ec[i,1] = r[2*i-1,1]
-        # right boundary nx_coarse+1
-        ec[i,nxc+1] = r[2*i-1, nyf+1]
-    end
-end
 
 """
     restriction_matrix(nxf,nyf,nxc,nyc)
@@ -130,35 +99,6 @@ function restriction_matrix(nxf,nyf,nxc,nyc)
     return restriction_matrix_
 end
 
-
-function prolongation(nxc, nyc, nxf, nyf, unc, ef)
-    for j = 1:nyc for i = 1:nxc
-        # direct injection at center point
-        ef[2*i-1, 2*j-1] = unc[i,j]
-        # east neighnour on fine grid corresponding to coarse grid point
-        ef[2*i-1, 2*j-1+1] = 0.5*(unc[i,j] + unc[i,j+1])
-        # north neighbout on fine grid corresponding to coarse grid point
-        ef[2*i-1+1, 2*j-1] = 0.5*(unc[i,j] + unc[i+1,j])
-        # NE neighbour on fine grid corresponding to coarse grid point
-        ef[2*i-1+1, 2*j-1+1] = 0.25*(unc[i,j] + unc[i,j+1] +
-                                     unc[i+1,j] + unc[i+1,j+1])
-    end end
-
-    # update boundary points
-    for i = 1:nyc+1
-        # left boundary j = 1
-        ef[2*i-1,1] = unc[i,1]
-        # right boundary j = nx_fine+1
-        ef[2*i-1, nyf+1] = unc[i,nxc+1]
-    end
-
-    for j = 1:nxc+1
-        #bottom boundary i = 1
-        ef[1,2*j-1] = unc[1,j]
-        # top boundary i =  ny_fine+1
-        ef[nyf+1,2*j-1] = unc[nyc+1,j]
-    end
-end
 
 """
     prolongation_matrix(nxf,nyf,nxc,nyc)
@@ -205,77 +145,10 @@ end
 
 
 
-#------------------------------------------------------------------------------
-ipr = 1
 
-nx = ny = Int64(64)
-n_level = 3
-
-tolerance = Float64(1.0e-10)
-
-x_l = 0.0
-x_r = 1.0
-y_b = 0.0
-y_t = 1.0
-
-v1 = 2 # relaxation
-v2 = 2 # prolongation
-v3 = 2 # coarsest level
-
-dx = (x_r - x_l) / nx
-dy = (y_t - y_b) / ny
-
-
-x = Array{Float64}(undef, nx+1)
-y = Array{Float64}(undef, ny+1)
-u_e = Array{Float64}(undef, nx+1, ny+1)
-
-f_array = Array{Float64}(undef, nx+1, ny+1)
-r_array = spzeros(nx+1, ny+1)
-u_n = Array{Float64}(undef, nx+1, ny+1)
-
-for i = 1:nx+1
-    x[i] = x_l + dx*(i-1)
-end
-for i = 1:ny+1
-    y[i] = y_b + dy*(i-1)
-end
-
-c1 = (1.0/16.0)^2
-c2 = -2.0*pi*pi
-
-for i = 1:nx+1 for j = 1:ny+1
-    if ipr == 1
-        u_e[i,j] = (x[i]^2 - 1.0)*(y[j]^2 - 1.0)
-
-        f_array[i,j]  = -2.0*(2.0 - x[i]^2 - y[j]^2)
-
-        u_n[i,j] = 0.0
-    end
-
-    if ipr == 2
-        u_e[i,j] = sin(2.0*pi*x[i]) * sin(2.0*pi*y[j]) +
-                   c1*sin(16.0*pi*x[i]) * sin(16.0*pi*y[j])
-
-        f_array[i,j] = 4.0*c2*sin(2.0*pi*x[i]) * sin(2.0*pi*y[j]) +
-                 c2*sin(16.0*pi*x[i]) * sin(16.0*pi*y[j])
-
-        u_n[i,j] = 0.0
-    end
-end end
-
-
-
-
-u_n[:,1] = u_e[:,1]
-u_n[:, ny+1] = u_e[:, ny+1]
-
-u_n[1,:] = u_e[1,:]
-u_n[nx+1,:] = u_e[nx+1,:]
-
-
-function reset_uf(u_n, f_array)
+function initialize_uf(u_n, f_array)
     # u_n = Array{Float64}(undef, nx+1, ny+1)
+    nx, ny = size(u_n)[1]-1, size(u_n)[2]-1
 
     for i = 1:nx+1 for j = 1:ny+1
         if ipr == 1
@@ -311,44 +184,6 @@ function reset_uf(u_n, f_array)
 end
 
 
-# modify f_array to match BC boundary conditions
-for i = 1:nx+1 for j = 1:ny+1
-    if ((i == 1) || (i == nx+1) || (j == 1) || (j == ny+1))
-        f_array[i,j] = u_n[i,j]
-    end
-end end
-
-compute_residual(nx,ny,dx,dy,f_array,u_n,r_array)
-
-poisson_matrix_ = poisson_matrix(nx,ny,dx,dy)
-poisson_u_n = reshape(poisson_matrix_ * u_n[:], (nx+1), (nx+1))
-
-# @show (r_array[:] - poisson_matrix_ * u_n[:])
-
-# r_array - reshape(f_array[:] - poisson_matrix_ * u_n[:],nx+1,ny+1)
-
-manual_residual = reshape((f_array[:] - poisson_matrix_ * u_n[:]),nx+1,ny+1)
-@assert manual_residual ≈ r_array
-
-V = 1
-
-f_array
-
-u_n
-
-u_n_copy = copy(u_n)
-
-gauss_seidel_mg(nx,ny,dx,dy,f_array,u_n_copy, V)
-
-
-# u_n + (f_array - reshape(poisson_matrix_*u_n[:],nx+1,ny+1)) ./ (-2.0/dx^2 -2.0/dy^2)
-
-L = LowerTriangular(poisson_matrix_)
-U = poisson_matrix_ - L
-u_n_new = reshape(L\(f_array[:] - U*u_n[:]), nx+1, ny+1)
-
-@assert u_n_copy ≈ u_n_new
-# reshape(u_n[:] + L\(f_array[:] - U*u_n[:]), nx+1, ny+1)
 
 #######################################################################
 ## Starting multigrid
@@ -426,7 +261,7 @@ temp_residual = zeros(Float64, lnx[1]+1, lny[1]+1)
 # reshape(L\(f_array[:] - U*u_n[:]), nx+1, ny+1)
 
 maximum_iterations = 10
-# for iteration_count = 1:maximum_iterations
+for iteration_count = 1:maximum_iterations
     for i in 1:v1
         u_mg[1] .= reshape(L\(f_array[:] - U*u_mg[1][:]), nx+1, ny+1)
     end
@@ -442,7 +277,10 @@ maximum_iterations = 10
 
     # count = iteration_count
     # count = iteration_count
-
+    @show (rms)
+    if (rms/init_rms) <= tolerance
+        break
+    end
 
     # from second level to coarsest level
     for k = 2:n_level
@@ -481,28 +319,27 @@ maximum_iterations = 10
                 u_mg[k] .= reshape(L_mg[k]\(f_mg[k][:] - U_mg[k]*u_mg[k][:]),lnx[k]+1,lny[k]+1)
             end
         end
-
-        for k = n_level:-1:2
-            # temporary matrix for correction storage at the (k-1)th level
-            # solution prolongated from the kth level to the (k-1)th level
-            prol_fine = zeros(Float64, lnx[k-1]+1, lny[k-1]+1)
-
-            # prolongate solution from (k)th level to (k-1)th level
-            prol_fine[:] = prolongation_matrix(lnx[k],lny[k],lnx[k-1],lny[k-1]) * u_mg[k][:]
-
-            # update u_mg
-
-            for j = 2:lnx[k-1] for i = 2:lny[k-1]
-                u_mg[k-1][i,j] = u_mg[k-1][i,j] + prol_fine[i,j]
-            end end
-
-            # Gauss seidel iteration
-            for i in 1:v3
-                u_mg[k-1] .= reshape(L_mg[k-1]\(f_mg[k-1][:] - U_mg[k-1]*u_mg[k-1][:]),lnx[k-1]+1,lny[k-1]+1)
-            end
-
-        end
-
     end
 
-# end
+
+    # sweep from coarsest grid to finest grid
+    for k = n_level:-1:2
+        # temporary matrix for correction storage at the (k-1)th level
+        # solution prolongated from the kth level to the (k-1)th level
+        prol_fine = zeros(Float64, lnx[k-1]+1, lny[k-1]+1)
+
+        # prolongate solution from (k)th level to (k-1)th level
+        prol_fine[:] = prolongation_matrix(lnx[k],lny[k],lnx[k-1],lny[k-1]) * u_mg[k][:]
+
+        # update u_mg
+
+        for j = 2:lnx[k-1] for i = 2:lny[k-1]
+            u_mg[k-1][i,j] = u_mg[k-1][i,j] + prol_fine[i,j]
+        end end
+
+        # Gauss seidel iteration
+        for i in 1:v3
+            u_mg[k-1] .= reshape(L_mg[k-1]\(f_mg[k-1][:] - U_mg[k-1]*u_mg[k-1][:]),lnx[k-1]+1,lny[k-1]+1)
+        end
+    end
+end
