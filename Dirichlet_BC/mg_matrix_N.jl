@@ -2,7 +2,7 @@ using CPUTime
 using Printf
 using Plots
 using SparseArrays
-
+using LinearAlgebra
 
 function compute_residual(nx,ny,dx,dy,f,u_n,r)
     for j in 2:ny for i = 2:nx
@@ -191,14 +191,20 @@ end
 
 u_mg = Matrix{Float64}[]
 f_mg = Matrix{Float64}[]
-A_mg = Matrix{Float64}[]
-L_mg = Matrix{Float64}[]
-U_mg = Matrix{Float64}[]
+A_mg = SparseMatrixCSC{Float64, Int64}[]
+L_mg = LowerTriangular{Float64, SparseMatrixCSC{Float64, Int64}}[]
+U_mg = UpperTriangular{Float64, SparseMatrixCSC{Float64, Int64}}[]
 r = zeros(Float64,nx+1, ny+1)
 
 push!(u_mg, u_n)
 push!(f_mg, f_array)
 push!(A_mg, poisson_matrix_)
+L = LowerTriangular(poisson_matrix_)
+# U = poisson_matrix_ - L
+U = copy(UpperTriangular(poisson_matrix_)) #Can not directly change the UpperTriangular(poisson_matrix_)
+for i in 1:size(U)[1]
+    U[i,i] = 0
+end
 push!(L_mg, L)
 push!(U_mg, U)
 
@@ -264,7 +270,7 @@ temp_residual = zeros(Float64, lnx[1]+1, lny[1]+1)
 maximum_iterations = 10
 for iteration_count = 1:maximum_iterations
     for i in 1:v1
-        u_mg[1] .= reshape(L\(f_mg[1][:] - U*u_mg[1][:]), nx+1, ny+1)
+        u_mg[1] .= reshape(L_mg[1]\(f_mg[1][:] - U_mg[1]*u_mg[1][:]), nx+1, ny+1)
     end
 
     # calculate residual
@@ -298,6 +304,7 @@ for iteration_count = 1:maximum_iterations
         # restriction(lnx[k-1], lny[k-1], lnx[k], lny[k], temp_residual,
         #                 f_mg[k])
         # f_mg[k][:] ≈ restriction_matrix(lnx[k-1],lny[k-1],lnx[k],lny[k]) * temp_residual[:]
+        @show k
         f_mg[k][:] = restriction_matrix(lnx[k-1],lny[k-1],lnx[k],lny[k]) * temp_residual[:]
 
         # solution at kth level to zero
@@ -307,9 +314,13 @@ for iteration_count = 1:maximum_iterations
         if length(A_mg) < k # pushing A_mg L_mg U_mg if they are not formulated
             push!(A_mg,poisson_matrix(lnx[k],lny[k],ldx[k],ldy[k]))
             push!(L_mg, LowerTriangular(A_mg[k]))
-            push!(U_mg, A_mg[k] - L_mg[k])
+            U = copy(UpperTriangular(A_mg[k])) #Can not directly change the UpperTriangular(poisson_matrix_)
+            for i in 1:size(U)[1]
+                U[i,i] = 0
+            end
+            push!(U_mg, U)
         end
-        
+
         # solve (∇^-λ^2)ϕ = ϵ on coarse grid (kthe level)
         if k < n_level
             for i in 1:v1

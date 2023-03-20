@@ -1,4 +1,5 @@
 include("mg_matrix_N.jl")
+include("mg_N.jl")
 
 
 #------------------------------------------------------------------------------
@@ -6,7 +7,7 @@ include("mg_matrix_N.jl")
 
 ipr = 1
 
-nx = ny = Int64(64)
+nx = ny = Int64(256)
 n_level = 4
 
 tolerance = Float64(1.0e-10)
@@ -108,7 +109,12 @@ gauss_seidel_mg(nx,ny,dx,dy,f_array,u_n_copy, V)
 # u_n + (f_array - reshape(poisson_matrix_*u_n[:],nx+1,ny+1)) ./ (-2.0/dx^2 -2.0/dy^2)
 
 L = LowerTriangular(poisson_matrix_)
-U = poisson_matrix_ - L
+# U = poisson_matrix_ - L
+U = copy(UpperTriangular(poisson_matrix_)) #Can not directly change the UpperTriangular(poisson_matrix_)
+
+for i in 1:size(U)[1]
+    U[i,i] = 0
+end
 u_n_new = reshape(L\(f_array[:] - U*u_n[:]), nx+1, ny+1)
 
 @assert u_n_copy ≈ u_n_new
