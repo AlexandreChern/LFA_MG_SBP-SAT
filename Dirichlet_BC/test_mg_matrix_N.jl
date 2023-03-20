@@ -7,7 +7,7 @@ include("mg_matrix_N.jl")
 ipr = 1
 
 nx = ny = Int64(64)
-n_level = 3
+n_level = 4
 
 tolerance = Float64(1.0e-10)
 
