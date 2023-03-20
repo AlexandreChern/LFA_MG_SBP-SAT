@@ -188,6 +188,7 @@ end
 #######################################################################
 ## Starting multigrid
 
+
 u_mg = Matrix{Float64}[]
 f_mg = Matrix{Float64}[]
 A_mg = Matrix{Float64}[]
@@ -220,7 +221,7 @@ end
 # allocate memory for grid size at different levels
 
 lnx = zeros(Int64, n_level)
-lnx = zeros(Int64, n_level)
+lny = zeros(Int64, n_level)
 ldx = zeros(Float64, n_level)
 ldy = zeros(Float64, n_level)
 
@@ -263,7 +264,7 @@ temp_residual = zeros(Float64, lnx[1]+1, lny[1]+1)
 maximum_iterations = 10
 for iteration_count = 1:maximum_iterations
     for i in 1:v1
-        u_mg[1] .= reshape(L\(f_array[:] - U*u_mg[1][:]), nx+1, ny+1)
+        u_mg[1] .= reshape(L\(f_mg[1][:] - U*u_mg[1][:]), nx+1, ny+1)
     end
 
     # calculate residual
@@ -308,7 +309,7 @@ for iteration_count = 1:maximum_iterations
             push!(L_mg, LowerTriangular(A_mg[k]))
             push!(U_mg, A_mg[k] - L_mg[k])
         end
-
+        
         # solve (∇^-λ^2)ϕ = ϵ on coarse grid (kthe level)
         if k < n_level
             for i in 1:v1
