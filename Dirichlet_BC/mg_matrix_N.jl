@@ -327,10 +327,12 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10)
         push!(f_mg, fc)
     end
 
+    println("Starting assembling restriction matrices")
     for k in 1:n_level-1
         push!(rest_mg, restriction_matrix(lnx[k],lny[k],lnx[k+1],lny[k+1]))
         push!(prol_mg, prolongation_matrix(lnx[k],lny[k],lnx[k+1],lny[k+1]))
     end
+    println("Finishing assembling restriction matrices")
 
     # allocate matrix for storage at fine level
     # residual at fine level is already defined at global level
@@ -345,6 +347,7 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10)
     # u_n .= reshape(L\(f_array[:] - U*u_n[:]), nx+1, ny+1)
     # reshape(L\(f_array[:] - U*u_n[:]), nx+1, ny+1)
 
+    println("Starting Multigrid Iterations")
     for iteration_count = 1:maximum_iterations
         mg_iter_count += 1
         for i in 1:v1
