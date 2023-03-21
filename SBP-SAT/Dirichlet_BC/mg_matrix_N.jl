@@ -5,14 +5,14 @@ using SparseArrays
 using LinearAlgebra
 include("Poisson_matrix.jl")
 
-function compute_residual(nx,ny,dx,dy,f,u_n,r)
-    for j in 2:ny for i = 2:nx
-        d2udx2 = (u_n[i+1,j] - 2*u_n[i,j] + u_n[i-1,j])/(dx^2)
-        d2udy2 = (u_n[i,j+1] - 2*u_n[i,j] + u_n[i,j-1])/(dy^2)
-        r[i,j] = f[i,j]  - d2udx2 - d2udy2
-        # r[i,j] = d2udx2 + d2udy2
-    end end
-end
+# function compute_residual(nx,ny,dx,dy,f,u_n,r) # should not use this for the SBP-SAT method
+#     for j in 2:ny for i = 2:nx
+#         d2udx2 = (u_n[i+1,j] - 2*u_n[i,j] + u_n[i-1,j])/(dx^2)
+#         d2udy2 = (u_n[i,j+1] - 2*u_n[i,j] + u_n[i,j-1])/(dy^2)
+#         r[i,j] = f[i,j]  - d2udx2 - d2udy2
+#         # r[i,j] = d2udx2 + d2udy2
+#     end end
+# end
 
 
 function poisson_matrix(nx,ny,dx,dy)
