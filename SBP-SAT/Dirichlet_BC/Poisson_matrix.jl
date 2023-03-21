@@ -31,12 +31,12 @@ function eyes(n)
     return out
 end
 
-function u(x,y)
+function u_func(x,y)
     # return sin.(π*x .+ π*y)
     return (x.^2 .- 1) .* (y.^2 .- 1)
 end
 
-function f(x,y)
+function f_func(x,y)
     return 2 .* (2 .- x.^2 .- y.^2)
 end
 
@@ -126,7 +126,9 @@ end
 
 
 
-function poisson_sbp-sat_matrix(nx,ny,dx,dy)
+function poisson_sbp_sat_matrix(nx,ny,dx,dy)
+    h_list_x = [1/2^1, 1/2^2, 1/2^3, 1/2^4, 1/2^5, 1/2^6, 1/2^7, 1/2^8, 1/2^9, 1/2^10, 1/2^11, 1/2^12, 1/2^13]
+    h_list_y = [1/2^1, 1/2^2, 1/2^3, 1/2^4, 1/2^5, 1/2^6, 1/2^7, 1/2^8, 1/2^9, 1/2^10, 1/2^11, 1/2^12, 1/2^13]
     i = Int64(log2(nx))
     j = Int64(log2(ny))
 
@@ -134,5 +136,59 @@ function poisson_sbp-sat_matrix(nx,ny,dx,dy)
     dy = dy
     (D1_x, D1_y, D2_x, D2_y, D2, HI_x, HI_y, BS_x, BS_y, HI_tilde, H_tilde, I_Nx, I_Ny, e_E, e_W, e_S, e_N, E_E, E_W, E_S, E_N) = Operators_2d(i,j);
 
-    
+    hx = h_list_x[i];
+    hy = h_list_y[j];
+
+    x = range(0,step=hx,1);
+    y = range(0,step=hy,1);
+    m_list = 1 ./h_list_x;
+    n_list = 1 ./h_list_y;
+
+    # Matrix Size
+    N_x = Integer(m_list[i]);
+    N_y = Integer(n_list[j]);
+
+    Nx = N_x + 1;
+    Ny = N_y + 1;
+
+    # 2D operators
+    (D1_x, D1_y, D2_x, D2_y, D2, HI_x, HI_y, BS_x, BS_y, HI_tilde, H_tilde, I_Nx, I_Ny, e_E, e_W, e_S, e_N, E_E, E_W, E_S, E_N) = Operators_2d(i,j);
+
+    # Penalty Parameters
+    tau_E = 13/hx;
+    tau_W = 13/hx;
+    tau_N = 13/hy;
+    tau_S = 13/hy;
+
+    beta = -1;
+
+    ## Formulation 1
+    SAT_W = tau_W*HI_x*E_W + beta*HI_x*BS_x'*E_W;
+    SAT_E = tau_E*HI_x*E_E + beta*HI_x*BS_x'*E_E;
+    SAT_S = tau_S*HI_y*E_S + beta*HI_y*BS_y'*E_S;
+    SAT_N = tau_N*HI_y*E_N + beta*HI_y*BS_y'*E_N;
+
+    SAT_W_r = tau_W*HI_x*E_W*e_W + beta*HI_x*BS_x'*E_W*e_W;
+    SAT_E_r = tau_E*HI_x*E_E*e_E + beta*HI_x*BS_x'*E_E*e_E;
+    SAT_S_r = tau_S*HI_y*E_S*e_S + beta*HI_y*BS_y'*E_S*e_S;
+    SAT_N_r = tau_N*HI_y*E_N*e_N + beta*HI_y*BS_y'*E_N*e_N;
+
+
+    (alpha1,alpha2,alpha3,alpha4,beta) = (tau_N,tau_S,tau_W,tau_E,beta);
+
+
+    g_W = -1 * (y.^2 .- 1);
+    g_E = (0) * (y.^2 .- 1) ;
+    g_S = (x.^2 .- 1) * (-1);
+    g_N = (x.^2 .- 1) * (0);
+
+    # Solving with CPU
+    A = -D2 + SAT_W + SAT_E + SAT_S + SAT_N;
+
+    b = f_func(x,y')[:] + SAT_W_r*g_W + SAT_E_r*g_E + SAT_S_r*g_S + SAT_N_r*g_N;
+
+    A_DDDD = H_tilde*A;
+    b_DDDD = H_tilde*b;
+
+    return A_DDDD, b_DDDD
 end
