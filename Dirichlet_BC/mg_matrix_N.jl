@@ -185,7 +185,7 @@ end
 
 
 # function initialize_uf(u_n, f_array)
-function initialize_uf(nx,ny)
+function initialize_uf(nx,ny;ipr=1)
     # u_n = Array{Float64}(undef, nx+1, ny+1)
     # nx, ny = size(u_n)[1]-1, size(u_n)[2]-1
     u_n = Array{Float64}(undef,nx+1,ny+1)
@@ -196,6 +196,9 @@ function initialize_uf(nx,ny)
     x_r = 1.0
     y_b = 0.0
     y_t = 1.0
+
+    dx = (x_r - x_l) / nx
+    dy = (y_t - y_b) / ny
 
     x = Array{Float64}(undef, nx+1)
     y = Array{Float64}(undef, ny+1)
@@ -250,7 +253,7 @@ end
 #######################################################################
 ## Starting multigrid
 
-function mg_matrix_N(nx,ny,n_level)
+function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10)
     maximum_iterations = 10000 # set maximum_iterations
     u_n, f_array = initialize_uf(nx,ny)
     dx = 1.0 ./nx
@@ -284,8 +287,9 @@ function mg_matrix_N(nx,ny,n_level)
     rms = compute_l2norm(nx,ny,r)
 
     init_rms = rms
+    mg_iter_count = 0
 
-    print("0", " ", rms, " ", rms/init_rms)
+    println("0", " ", rms, " ", rms/init_rms)
 
     if nx < (2^n_level)
         print("Number of levels exceeds the possible nmber.\n")
@@ -335,6 +339,7 @@ function mg_matrix_N(nx,ny,n_level)
     # reshape(L\(f_array[:] - U*u_n[:]), nx+1, ny+1)
 
     for iteration_count = 1:maximum_iterations
+        mg_iter_count += 1
         for i in 1:v1
             u_mg[1] .= reshape(L_mg[1]\(f_mg[1][:] - U_mg[1]*u_mg[1][:]), nx+1, ny+1)
         end
@@ -350,7 +355,8 @@ function mg_matrix_N(nx,ny,n_level)
 
         # count = iteration_count
         # count = iteration_count
-        @show (rms)
+        # @show (rms)
+        println(mg_iter_count, " ", rms, " ", rms/init_rms)
         if (rms/init_rms) <= tolerance
             break
         end
