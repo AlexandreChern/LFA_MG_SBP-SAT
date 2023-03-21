@@ -160,6 +160,13 @@ function poisson_sbp_sat_matrix(nx,ny,dx,dy)
     tau_N = 13/hy;
     tau_S = 13/hy;
 
+    # tau_E = 130000/hx; # changing penalty parameters
+    # tau_W = 130000/hx;
+    # tau_N = 130000/hy;
+    # tau_S = 130000/hy;
+
+    # println("I am changing parameters again")
+
     beta = -1;
 
     ## Formulation 1
