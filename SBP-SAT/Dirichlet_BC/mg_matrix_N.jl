@@ -359,8 +359,9 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10)
                 # from third level onwards residual is computed for (k-1) level
                 # which will be restricted to kth level error
                 temp_residual = zeros(Float64, lnx[k-1]+1, lny[k-1]+1)
-                compute_residual(lnx[k-1], lny[k-1], ldx[k-1], ldy[k-1],
-                            f_mg[k-1], u_mg[k-1], temp_residual)
+                # compute_residual(lnx[k-1], lny[k-1], ldx[k-1], ldy[k-1],
+                #             f_mg[k-1], u_mg[k-1], temp_residual)
+                temp_residual[:] = f_mg[k-1][:] - A_mg[k-1] * u_mg[k-1][:]
             end
             # restriction(lnx[k-1], lny[k-1], lnx[k], lny[k], temp_residual,
             #                 f_mg[k])
