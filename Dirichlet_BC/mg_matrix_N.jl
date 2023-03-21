@@ -348,11 +348,11 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10)
     for iteration_count = 1:maximum_iterations
         mg_iter_count += 1
         for i in 1:v1
-            u_mg[1] .= reshape(L_mg[1]\(f_mg[1][:] - U_mg[1]*u_mg[1][:]), nx+1, ny+1)
+            u_mg[1] .= reshape(L_mg[1]\(f_mg[1][:] .- U_mg[1]*u_mg[1][:]), nx+1, ny+1)
         end
 
         # calculate residual
-        r = reshape((f_array[:] - poisson_matrix_ * u_mg[1][:]),nx+1,ny+1)
+        r = reshape((f_array[:] .- poisson_matrix_ * u_mg[1][:]),nx+1,ny+1)
 
         # compute l2norm of the residual
         rms = compute_l2norm(lnx[1],lny[1],r)
@@ -406,11 +406,11 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10)
             # solve (∇^-λ^2)ϕ = ϵ on coarse grid (kthe level)
             if k < n_level
                 for i in 1:v1
-                    u_mg[k] .= reshape(L_mg[k]\(f_mg[k][:] - U_mg[k]*u_mg[k][:]),lnx[k]+1,lny[k]+1)
+                    u_mg[k] .= reshape(L_mg[k]\(f_mg[k][:] .- U_mg[k]*u_mg[k][:]),lnx[k]+1,lny[k]+1)
                 end
             elseif k == n_level
                 for i in 1:v2
-                    u_mg[k] .= reshape(L_mg[k]\(f_mg[k][:] - U_mg[k]*u_mg[k][:]),lnx[k]+1,lny[k]+1)
+                    u_mg[k] .= reshape(L_mg[k]\(f_mg[k][:] .- U_mg[k]*u_mg[k][:]),lnx[k]+1,lny[k]+1)
                 end
             end
         end
@@ -434,7 +434,7 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10)
 
             # Gauss seidel iteration
             for i in 1:v3
-                u_mg[k-1] .= reshape(L_mg[k-1]\(f_mg[k-1][:] - U_mg[k-1]*u_mg[k-1][:]),lnx[k-1]+1,lny[k-1]+1)
+                u_mg[k-1] .= reshape(L_mg[k-1]\(f_mg[k-1][:] .- U_mg[k-1]*u_mg[k-1][:]),lnx[k-1]+1,lny[k-1]+1)
             end
         end
     end
