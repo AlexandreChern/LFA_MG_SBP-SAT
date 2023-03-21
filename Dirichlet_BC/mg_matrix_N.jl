@@ -154,7 +154,7 @@ end
     ⠀⠀⠀⢱⠀
     ⠀⠀⠀⠀⠁
 """
-function prolongation_matrix(nxc,nyc,nxf,nyf)
+function prolongation_matrix(nxf,nyf,nxc,nyc)
     prolongation_matrix_ = spzeros((nxf+1)*(nyf+1),(nxc+1)*(nyc+1))
     for j in 1:nyc+1
         for i in 1:nxc+1
@@ -264,6 +264,8 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10)
     A_mg = SparseMatrixCSC{Float64, Int64}[]
     L_mg = LowerTriangular{Float64, SparseMatrixCSC{Float64, Int64}}[]
     U_mg = UpperTriangular{Float64, SparseMatrixCSC{Float64, Int64}}[]
+    rest_mg = SparseMatrixCSC{Float64, Int64}[]
+    prol_mg = SparseMatrixCSC{Float64, Int64}[]
     r = zeros(Float64,nx+1, ny+1)
 
     push!(u_mg, u_n)
@@ -325,6 +327,11 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10)
         push!(f_mg, fc)
     end
 
+    for k in 1:n_level-1
+        push!(rest_mg, restriction_matrix(lnx[k],lny[k],lnx[k+1],lny[k+1]))
+        push!(prol_mg, prolongation_matrix(lnx[k],lny[k],lnx[k+1],lny[k+1]))
+    end
+
     # allocate matrix for storage at fine level
     # residual at fine level is already defined at global level
 
@@ -377,13 +384,16 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10)
             #                 f_mg[k])
             # f_mg[k][:] ≈ restriction_matrix(lnx[k-1],lny[k-1],lnx[k],lny[k]) * temp_residual[:]
             # @show k
-            f_mg[k][:] = restriction_matrix(lnx[k-1],lny[k-1],lnx[k],lny[k]) * temp_residual[:]
+            # f_mg[k][:] = restriction_matrix(lnx[k-1],lny[k-1],lnx[k],lny[k]) * temp_residual[:]
+            f_mg[k][:] = rest_mg[k-1] * temp_residual[:]
+
 
             # solution at kth level to zero
             u_mg[k][:,:] = zeros(lnx[k]+1, lny[k]+1)
             
             # formulating Poisson matrix
             if length(A_mg) < k # pushing A_mg L_mg U_mg if they are not formulated
+                println("Assembling matrices for Nx = $(lnx[k]), Ny = $(lny[k]) for the first time")
                 push!(A_mg,poisson_matrix(lnx[k],lny[k],ldx[k],ldy[k]))
                 push!(L_mg, LowerTriangular(A_mg[k]))
                 U = copy(UpperTriangular(A_mg[k])) #Can not directly change the UpperTriangular(poisson_matrix_)
@@ -413,7 +423,8 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10)
             prol_fine = zeros(Float64, lnx[k-1]+1, lny[k-1]+1)
 
             # prolongate solution from (k)th level to (k-1)th level
-            prol_fine[:] = prolongation_matrix(lnx[k],lny[k],lnx[k-1],lny[k-1]) * u_mg[k][:]
+            # prol_fine[:] = prolongation_matrix(lnx[k-1],lny[k-1],lnx[k],lny[k]) * u_mg[k][:]
+            prol_fine[:] = prol_mg[k-1] * u_mg[k][:]
 
             # update u_mg
 
