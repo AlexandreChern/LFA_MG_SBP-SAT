@@ -162,6 +162,7 @@ function initialize_uf(nx,ny;ipr=1)
     f_array = Array{Float64}(undef,nx+1,ny+1)
 
     A_DDDD, b_DDDD = poisson_sbp_sat_matrix(nx,ny,1/nx,1/ny)
+    u_n .= 0
     f_array[:] .= b_DDDD
     # u_e = Array{Float64}(undef, nx+1, ny+1)
 
@@ -227,7 +228,7 @@ end
 ## Starting multigrid
 
 function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10)
-    maximum_iterations = 10 # set maximum_iterations
+    maximum_iterations = nx*ny # set maximum_iterations
     u_n, f_array = initialize_uf(nx,ny)
     dx = 1.0 ./nx
     dy = 1.0 ./ny

@@ -254,7 +254,7 @@ end
 ## Starting multigrid
 
 function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10)
-    maximum_iterations = 10000 # set maximum_iterations
+    maximum_iterations = nx * ny #10000 # set maximum_iterations
     u_n, f_array = initialize_uf(nx,ny)
     dx = 1.0 ./nx
     dy = 1.0 ./ny
