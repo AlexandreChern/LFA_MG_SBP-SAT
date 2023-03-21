@@ -3,6 +3,7 @@ using Printf
 using Plots
 using SparseArrays
 using LinearAlgebra
+include("Poisson_matrix.jl")
 
 function compute_residual(nx,ny,dx,dy,f,u_n,r)
     for j in 2:ny for i = 2:nx
@@ -159,60 +160,63 @@ function initialize_uf(nx,ny;ipr=1)
     # nx, ny = size(u_n)[1]-1, size(u_n)[2]-1
     u_n = Array{Float64}(undef,nx+1,ny+1)
     f_array = Array{Float64}(undef,nx+1,ny+1)
-    u_e = Array{Float64}(undef, nx+1, ny+1)
 
-    x_l = 0.0
-    x_r = 1.0
-    y_b = 0.0
-    y_t = 1.0
+    A_DDDD, b_DDDD = poisson_sbp_sat_matrix(nx,ny,1/nx,1/ny)
+    f_array[:] .= b_DDDD
+    # u_e = Array{Float64}(undef, nx+1, ny+1)
 
-    dx = (x_r - x_l) / nx
-    dy = (y_t - y_b) / ny
+    # x_l = 0.0
+    # x_r = 1.0
+    # y_b = 0.0
+    # y_t = 1.0
 
-    x = Array{Float64}(undef, nx+1)
-    y = Array{Float64}(undef, ny+1)
-    u_e = Array{Float64}(undef, nx+1, ny+1)
-    f = Array{Float64}(undef, nx+1, ny+1)
-    u_n = Array{Float64}(undef, nx+1, ny+1)
+    # dx = (x_r - x_l) / nx
+    # dy = (y_t - y_b) / ny
 
-    for i = 1:nx+1
-        x[i] = x_l + dx*(i-1)
-    end
-    for i = 1:ny+1
-        y[i] = y_b + dy*(i-1)
-    end
+    # x = Array{Float64}(undef, nx+1)
+    # y = Array{Float64}(undef, ny+1)
+    # u_e = Array{Float64}(undef, nx+1, ny+1)
+    # f = Array{Float64}(undef, nx+1, ny+1)
+    # u_n = Array{Float64}(undef, nx+1, ny+1)
 
-    for i = 1:nx+1 for j = 1:ny+1
-        if ipr == 1
-            u_e[i,j] = (x[i]^2 - 1.0)*(y[j]^2 - 1.0)
+    # for i = 1:nx+1
+    #     x[i] = x_l + dx*(i-1)
+    # end
+    # for i = 1:ny+1
+    #     y[i] = y_b + dy*(i-1)
+    # end
+
+    # for i = 1:nx+1 for j = 1:ny+1
+    #     if ipr == 1
+    #         u_e[i,j] = (x[i]^2 - 1.0)*(y[j]^2 - 1.0)
     
-            f_array[i,j]  = -2.0*(2.0 - x[i]^2 - y[j]^2)
+    #         f_array[i,j]  = -2.0*(2.0 - x[i]^2 - y[j]^2)
     
-            u_n[i,j] = 0.0
-        end
+    #         u_n[i,j] = 0.0
+    #     end
     
-        if ipr == 2
-            u_e[i,j] = sin(2.0*pi*x[i]) * sin(2.0*pi*y[j]) +
-                       c1*sin(16.0*pi*x[i]) * sin(16.0*pi*y[j])
+    #     if ipr == 2
+    #         u_e[i,j] = sin(2.0*pi*x[i]) * sin(2.0*pi*y[j]) +
+    #                    c1*sin(16.0*pi*x[i]) * sin(16.0*pi*y[j])
     
-            f_array[i,j] = 4.0*c2*sin(2.0*pi*x[i]) * sin(2.0*pi*y[j]) +
-                     c2*sin(16.0*pi*x[i]) * sin(16.0*pi*y[j])
+    #         f_array[i,j] = 4.0*c2*sin(2.0*pi*x[i]) * sin(2.0*pi*y[j]) +
+    #                  c2*sin(16.0*pi*x[i]) * sin(16.0*pi*y[j])
     
-            u_n[i,j] = 0.0
-        end
-    end end
+    #         u_n[i,j] = 0.0
+    #     end
+    # end end
 
-    u_n[:,1] = u_e[:,1]
-    u_n[:, ny+1] = u_e[:, ny+1]
+    # u_n[:,1] = u_e[:,1]
+    # u_n[:, ny+1] = u_e[:, ny+1]
 
-    u_n[1,:] = u_e[1,:]
-    u_n[nx+1,:] = u_e[nx+1,:]
+    # u_n[1,:] = u_e[1,:]
+    # u_n[nx+1,:] = u_e[nx+1,:]
 
-    for i = 1:nx+1 for j = 1:ny+1
-        if ((i == 1) || (i == nx+1) || (j == 1) || (j == ny+1))
-            f_array[i,j] = u_n[i,j]
-        end
-    end end
+    # for i = 1:nx+1 for j = 1:ny+1
+    #     if ((i == 1) || (i == nx+1) || (j == 1) || (j == ny+1))
+    #         f_array[i,j] = u_n[i,j]
+    #     end
+    # end end
 
     return u_n, f_array
 end
@@ -223,11 +227,12 @@ end
 ## Starting multigrid
 
 function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10)
-    maximum_iterations = 10000 # set maximum_iterations
+    maximum_iterations = 10 # set maximum_iterations
     u_n, f_array = initialize_uf(nx,ny)
     dx = 1.0 ./nx
     dy = 1.0 ./ny
-    poisson_matrix_ = poisson_matrix(nx,ny,dx,dy)
+    # poisson_matrix_ = poisson_matrix(nx,ny,dx,dy)
+    poisson_matrix_, _ = poisson_sbp_sat_matrix(nx,ny,dx,dy)
     u_mg = Matrix{Float64}[]
     f_mg = Matrix{Float64}[]
     A_mg = SparseMatrixCSC{Float64, Int64}[]
@@ -241,11 +246,12 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10)
     push!(f_mg, f_array)
     push!(A_mg, poisson_matrix_)
     L = LowerTriangular(poisson_matrix_)
-    # U = poisson_matrix_ - L
-    U = copy(UpperTriangular(poisson_matrix_)) #Can not directly change the UpperTriangular(poisson_matrix_)
-    for i in 1:size(U)[1]
-        U[i,i] = 0
-    end
+    # U = poisson_matrix_ - L # create dense matrix
+    # U = copy(UpperTriangular(poisson_matrix_)) #Can not directly change the UpperTriangular(poisson_matrix_)
+    # for i in 1:size(U)[1]
+    #     U[i,i] = 0
+    # end
+    U = triu(A_mg[1],1)
     push!(L_mg, L)
     push!(U_mg, U)
 
@@ -324,7 +330,11 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10)
         end
 
         # calculate residual
-        r = reshape((f_array[:] .- poisson_matrix_ * u_mg[1][:]),nx+1,ny+1)
+        # @show size(f_array)
+        # @show size(poisson_matrix_)
+        # r = reshape((f_array[:] .- poisson_matrix_ * u_mg[1][:]),nx+1,ny+1)
+        r = reshape((f_array[:] .- A_mg[1] * u_mg[1][:]),nx+1,ny+1)
+
 
         # compute l2norm of the residual
         rms = compute_l2norm(lnx[1],lny[1],r)
@@ -366,12 +376,15 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10)
             # formulating Poisson matrix
             if length(A_mg) < k # pushing A_mg L_mg U_mg if they are not formulated
                 println("Assembling matrices for Nx = $(lnx[k]), Ny = $(lny[k]) for the first time")
-                push!(A_mg,poisson_matrix(lnx[k],lny[k],ldx[k],ldy[k]))
+                # push!(A_mg,poisson_matrix(lnx[k],lny[k],ldx[k],ldy[k]))
+                poisson_matrix_, _ = poisson_sbp_sat_matrix(lnx[k],lny[k],ldx[k],ldy[k])
+                push!(A_mg, poisson_matrix_)
                 push!(L_mg, LowerTriangular(A_mg[k]))
-                U = copy(UpperTriangular(A_mg[k])) #Can not directly change the UpperTriangular(poisson_matrix_)
-                for i in 1:size(U)[1]
-                    U[i,i] = 0
-                end
+                # U = copy(UpperTriangular(A_mg[k])) #Can not directly change the UpperTriangular(poisson_matrix_)
+                # for i in 1:size(U)[1]
+                #     U[i,i] = 0
+                # end
+                U = triu(A_mg[k],1)
                 push!(U_mg, U)
             end
 

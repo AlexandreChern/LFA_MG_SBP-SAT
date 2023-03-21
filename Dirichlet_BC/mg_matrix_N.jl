@@ -272,11 +272,12 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10)
     push!(f_mg, f_array)
     push!(A_mg, poisson_matrix_)
     L = LowerTriangular(poisson_matrix_)
-    # U = poisson_matrix_ - L
-    U = copy(UpperTriangular(poisson_matrix_)) #Can not directly change the UpperTriangular(poisson_matrix_)
-    for i in 1:size(U)[1]
-        U[i,i] = 0
-    end
+    # U = poisson_matrix_ - L # create dense matrix
+    # U = copy(UpperTriangular(poisson_matrix_)) #Can not directly change the UpperTriangular(poisson_matrix_)
+    # for i in 1:size(U)[1]
+    #     U[i,i] = 0
+    # end
+    U = triu(poisson_matrix_, 1)
     push!(L_mg, L)
     push!(U_mg, U)
 
@@ -399,10 +400,11 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10)
                 println("Assembling matrices for Nx = $(lnx[k]), Ny = $(lny[k]) for the first time")
                 push!(A_mg,poisson_matrix(lnx[k],lny[k],ldx[k],ldy[k]))
                 push!(L_mg, LowerTriangular(A_mg[k]))
-                U = copy(UpperTriangular(A_mg[k])) #Can not directly change the UpperTriangular(poisson_matrix_)
-                for i in 1:size(U)[1]
-                    U[i,i] = 0
-                end
+                # U = copy(UpperTriangular(A_mg[k])) #Can not directly change the UpperTriangular(poisson_matrix_)
+                # for i in 1:size(U)[1]
+                #     U[i,i] = 0
+                # end
+                U = triu(A_mg[k],1)
                 push!(U_mg, U)
             end
 
