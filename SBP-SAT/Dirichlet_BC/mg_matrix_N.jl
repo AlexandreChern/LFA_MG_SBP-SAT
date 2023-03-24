@@ -4,6 +4,7 @@ using Plots
 using SparseArrays
 using LinearAlgebra
 include("Poisson_matrix.jl")
+include("interpolations.jl")
 
 # function compute_residual(nx,ny,dx,dy,f,u_n,r) # should not use this for the SBP-SAT method
 #     for j in 2:ny for i = 2:nx
@@ -227,8 +228,11 @@ end
 #######################################################################
 ## Starting multigrid
 
-function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10)
-    maximum_iterations = nx*ny # set maximum_iterations
+function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=1,interp="normal")
+    ω = 1 # damping coefficient for SOR
+    iter_algos = ["gauss_seidel","SOR","jacobi"]
+    iter_algo = iter_algos[iter_algo_num]
+    maximum_iterations = 20 #nx*ny # set maximum_iterations
     u_n, f_array = initialize_uf(nx,ny)
     dx = 1.0 ./nx
     dy = 1.0 ./ny
@@ -305,8 +309,13 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10)
 
     println("Starting assembling restriction matrices")
     for k in 1:n_level-1
-        push!(rest_mg, restriction_matrix(lnx[k],lny[k],lnx[k+1],lny[k+1]))
-        push!(prol_mg, prolongation_matrix(lnx[k],lny[k],lnx[k+1],lny[k+1]))
+        if interp == "normal"
+            push!(rest_mg, restriction_matrix(lnx[k],lny[k],lnx[k+1],lny[k+1]))
+            push!(prol_mg, prolongation_matrix(lnx[k],lny[k],lnx[k+1],lny[k+1]))
+        elseif interp == "sbp"
+            push!(rest_mg, restriction_matrix_v2(lnx[k],lny[k],lnx[k+1],lny[k+1]))
+            push!(prol_mg, prolongation_matrix_v2(lnx[k],lny[k],lnx[k+1],lny[k+1]))
+        end
     end
     println("Finishing assembling restriction matrices")
 
@@ -327,7 +336,13 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10)
     for iteration_count = 1:maximum_iterations
         mg_iter_count += 1
         for i in 1:v1
-            u_mg[1] .= reshape(L_mg[1]\(f_mg[1][:] .- U_mg[1]*u_mg[1][:]), nx+1, ny+1)
+            if iter_algo == "gauss_seidel"
+                u_mg[1] .= reshape(L_mg[1]\(f_mg[1][:] .- U_mg[1]*u_mg[1][:]), nx+1, ny+1)
+            elseif iter_algo == "SOR"
+                u_mg[1][:] .= (1-ω) * u_mg[1][:] .+ ω * L_mg[1]\(f_mg[1][:] .- U_mg[1]*u_mg[1][:])
+            elseif iter_algo == "jacobi"
+                jacobi!(u_mg[1][:],A_mg[1],f_mg[1][:],maxiter=1)
+            end
         end
 
         # calculate residual
@@ -393,11 +408,23 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10)
             # solve (∇^-λ^2)ϕ = ϵ on coarse grid (kthe level)
             if k < n_level
                 for i in 1:v1
-                    u_mg[k] .= reshape(L_mg[k]\(f_mg[k][:] .- U_mg[k]*u_mg[k][:]),lnx[k]+1,lny[k]+1)
+                    if iter_algo == "gauss_seidel"
+                        u_mg[k] .= reshape(L_mg[k]\(f_mg[k][:] .- U_mg[k]*u_mg[k][:]),lnx[k]+1,lny[k]+1) # gauss seidel
+                    elseif iter_algo == "SOR"
+                        u_mg[k][:] = (1-ω) * u_mg[k][:] .+ ω * L_mg[k] \ (f_mg[k][:] .- U_mg[k]*u_mg[k][:]) # SOR
+                    elseif iter_algo == "jacobi"
+                        jacobi!(u_mg[k][:],A_mg[k],f_mg[k][:],maxiter=1)
+                    end
                 end
             elseif k == n_level
                 for i in 1:v2
-                    u_mg[k] .= reshape(L_mg[k]\(f_mg[k][:] .- U_mg[k]*u_mg[k][:]),lnx[k]+1,lny[k]+1)
+                    if iter_algo == "gauss_seidel"
+                        u_mg[k] .= reshape(L_mg[k]\(f_mg[k][:] .- U_mg[k]*u_mg[k][:]),lnx[k]+1,lny[k]+1) # gauss seidel
+                    elseif iter_algo == "SOR"
+                        u_mg[k][:] = (1-ω) * u_mg[k][:] .+ ω * L_mg[k] \ (f_mg[k][:] .- U_mg[k]*u_mg[k][:]) # SOR
+                    elseif iter_algo == "jacobi"
+                        jacobi!(u_mg[k][:],A_mg[k],f_mg[k][:],maxiter=1)
+                    end
                 end
             end
         end
