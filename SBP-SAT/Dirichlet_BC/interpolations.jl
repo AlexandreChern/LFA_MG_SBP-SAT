@@ -17,30 +17,25 @@ using LinearAlgebra
     ⠀⠀⠀⢱⠀
     ⠀⠀⠀⠀⠁
 """
-function prolongation_matrix_v2(nxf,nyf,nxc,nyc)
-    prolongation_matrix_ = spzeros((nxf+1)*(nyf+1),(nxc+1)*(nyc+1))
-    for j in 1:nyc+1
-        for i in 1:nxc+1
-            indexc = (j-1)* (nxc+1) + i
-            indexf = (2*j-1 -1) * (nxf+1) + (2*i-1) # careful about this index
-            # @show (indexc, indexf)
-            prolongation_matrix_[indexf,indexc] = 1.0  # direct injection instead of(4)/16.0
-            if 2 <= i <= nxc
-                prolongation_matrix_[indexf+1,indexc] = 0.5 #(2)/16.0
-                prolongation_matrix_[indexf-1,indexc] = 0.5 #(2)/16.0
-            end
-            if 2 <= j <= nxc
-                prolongation_matrix_[indexf+nyf+1,indexc] = 0.5 #(2)/16.0
-                prolongation_matrix_[indexf-nyf-1,indexc] = 0.5 #(2)/16.0
-            end
-            if (2 <= i <= nxc) && (2 <= j <= nyc)
-                prolongation_matrix_[indexf-nyf-1-1,indexc] = 0.25 #(1)/16.0
-                prolongation_matrix_[indexf-nyf-1+1,indexc] = 0.25 #(1)/16.0
-                prolongation_matrix_[indexf+nyf+1+1,indexc] = 0.25 #(1)/16.0
-                prolongation_matrix_[indexf+nyf+1-1,indexc] = 0.25 #(1)/16.0
-            end
-        end
+function prolongation_matrix_v2(nxf,nyf,nxc,nyc) 
+    # SBP preserving prolongation matrix
+    prolongation_matrix_x = spzeros(nxf+1,nxc+1)
+    for i in 1:nxc
+        prolongation_matrix_x[2*i-1,i] = 1
+        prolongation_matrix_x[2*i,i] = 0.5
+        prolongation_matrix_x[2*i,i+1] = 0.5
     end
+    prolongation_matrix_x[end,end] = 1
+
+    prolongation_matrix_y = spzeros(nyf+1,nyc+1)
+    for i in 1:nyc
+        prolongation_matrix_y[2*i-1,i] = 1
+        prolongation_matrix_y[2*i,i] = 0.5
+        prolongation_matrix_y[2*i,i+1] = 0.5
+    end
+    prolongation_matrix_y[end,end] = 1
+
+    prolongation_matrix_ = kron(prolongation_matrix_x,prolongation_matrix_y)
     return prolongation_matrix_
 end
 
@@ -62,28 +57,28 @@ end
     ```
 """
 function restriction_matrix_v2(nxf,nyf,nxc,nyc)
-    restriction_matrix_ = spzeros((nxc+1)*(nyc+1),(nxf+1)*(nyf+1))
-    for j in 1:nyc+1
-        for i in 1:nxc+1
-            indexc = (j-1)* (nxc+1) + i
-            indexf = (2*j-1 -1) * (nxf+1) + (2*i-1) # careful about this index
-            # @show (indexc, indexf)
-            restriction_matrix_[indexc,indexf] = (4)/16.0
-            if 2 <= i <= nxc
-                restriction_matrix_[indexc,indexf+1] = (2)/16.0
-                restriction_matrix_[indexc,indexf-1] = (2)/16.0
-            end
-            if 2 <= j <= nxc
-                restriction_matrix_[indexc,indexf+nyf+1] = (2)/16.0
-                restriction_matrix_[indexc,indexf-nyf-1] = (2)/16.0
-            end
-            if (2 <= i <= nxc) && (2 <= j <= nyc)
-                restriction_matrix_[indexc,indexf-nyf-1-1] = (1)/16.0
-                restriction_matrix_[indexc,indexf-nyf-1+1] = (1)/16.0
-                restriction_matrix_[indexc,indexf+nyf+1+1] = (1)/16.0
-                restriction_matrix_[indexc,indexf+nyf+1-1] = (1)/16.0
-            end
-        end
+    restriction_matrix_x = spzeros(nxc+1, nxf+1)
+    restriction_matrix_x[1,1] = 1/2
+    restriction_matrix_x[1,2] = 1/2
+    for i in 2:nxc
+        restriction_matrix_x[i,2*i-1] = 1/2
+        restriction_matrix_x[i,2*i-2] = 1/4
+        restriction_matrix_x[i,2*i] = 1/4
     end
+    restriction_matrix_x[end,end] = 1/2
+    restriction_matrix_x[end,end-1] = 1/2
+
+    restriction_matrix_y = spzeros(nyc+1, nyf+1)
+    restriction_matrix_y[1,1] = 1/2
+    restriction_matrix_y[1,2] = 1/2
+    for i in 2:nyc
+        restriction_matrix_y[i,2*i-1] = 1/2
+        restriction_matrix_y[i,2*i-2] = 1/4
+        restriction_matrix_y[i,2*i] = 1/4
+    end
+    restriction_matrix_y[end,end] = 1/2
+    restriction_matrix_y[end,end-1] = 1/2
+
+    restriction_matrix_ = kron(restriction_matrix_x,restriction_matrix_y)
     return restriction_matrix_
 end
