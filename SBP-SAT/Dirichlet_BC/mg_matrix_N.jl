@@ -228,11 +228,11 @@ end
 #######################################################################
 ## Starting multigrid
 
-function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=1,interp="normal")
-    ω = 1 # damping coefficient for SOR
+function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=1,interp="normal",ω=1)
+    # ω = 1 # damping coefficient for SOR
     iter_algos = ["gauss_seidel","SOR","jacobi"]
     iter_algo = iter_algos[iter_algo_num]
-    maximum_iterations = 30 #nx*ny # set maximum_iterations
+    maximum_iterations = 120 #nx*ny # set maximum_iterations
     u_n, f_array = initialize_uf(nx,ny)
     dx = 1.0 ./nx
     dy = 1.0 ./ny
@@ -456,7 +456,13 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=
 
             # Gauss seidel iteration
             for i in 1:v3
-                u_mg[k-1] .= reshape(L_mg[k-1]\(f_mg[k-1][:] .- U_mg[k-1]*u_mg[k-1][:]),lnx[k-1]+1,lny[k-1]+1)
+                if iter_algo == "gauss_seidel"
+                    u_mg[k-1] .= reshape(L_mg[k-1]\(f_mg[k-1][:] .- U_mg[k-1]*u_mg[k-1][:]),lnx[k-1]+1,lny[k-1]+1)
+                elseif iter_algo == "SOR"
+                    u_mg[k-1][:] = (1-ω) * u_mg[k-1][:] .+ L_mg[k-1]\(f_mg[k-1][:] .- U_mg[k-1]*u_mg[k-1][:]) 
+                elseif iter_algo == "jacobi"
+                    jacobi!(u_mg[k-1],A_mg[k-1],f_mg[k-1][:],maxiter=1)
+                end
             end
         end
     end
