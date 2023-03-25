@@ -236,6 +236,8 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=
     u_n, f_array = initialize_uf(nx,ny)
     dx = 1.0 ./nx
     dy = 1.0 ./ny
+    xs = 0:dx:1
+    ys = 0:dy:1
     # poisson_matrix_ = poisson_matrix(nx,ny,dx,dy)
     poisson_matrix_, _ = poisson_sbp_sat_matrix(nx,ny,dx,dy)
     u_mg = Matrix{Float64}[]
@@ -350,6 +352,11 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=
         # @show size(poisson_matrix_)
         # r = reshape((f_array[:] .- poisson_matrix_ * u_mg[1][:]),nx+1,ny+1)
         r = reshape((f_array[:] .- A_mg[1] * u_mg[1][:]),nx+1,ny+1)
+
+        if iteration_count % 5 == 0
+            contourf(xs,ys,r,levels=20,color=:turbo)
+            savefig("figures/$(iteration_count).png")
+        end
 
 
         # compute l2norm of the residual
