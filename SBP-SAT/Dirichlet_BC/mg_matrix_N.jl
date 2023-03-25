@@ -339,9 +339,11 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=
         mg_iter_count += 1
         for i in 1:v1
             if iter_algo == "gauss_seidel"
-                u_mg[1] .= reshape(L_mg[1]\(f_mg[1][:] .- U_mg[1]*u_mg[1][:]), nx+1, ny+1)
+                # u_mg[1] .= reshape(L_mg[1]\(f_mg[1][:] .- U_mg[1]*u_mg[1][:]), nx+1, ny+1)
+                u_mg[1][:] .= L_mg[1] \ (f_mg[1][:] .- U_mg[1]*u_mg[1][:])
             elseif iter_algo == "SOR"
-                u_mg[1][:] .= (1-ω) * u_mg[1][:] .+ ω * L_mg[1]\(f_mg[1][:] .- U_mg[1]*u_mg[1][:])
+                # u_mg[1][:] .= (1-ω) * u_mg[1][:] .+ ω * L_mg[1]\(f_mg[1][:] .- U_mg[1]*u_mg[1][:])
+                sor!(u_mg[1][:],A_mg[1],f_mg[1][:],ω;maxiter=1)
             elseif iter_algo == "jacobi"
                 jacobi!(u_mg[1][:],A_mg[1],f_mg[1][:],maxiter=1)
             end
@@ -416,9 +418,11 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=
             if k < n_level
                 for i in 1:v1
                     if iter_algo == "gauss_seidel"
-                        u_mg[k] .= reshape(L_mg[k]\(f_mg[k][:] .- U_mg[k]*u_mg[k][:]),lnx[k]+1,lny[k]+1) # gauss seidel
+                        # u_mg[k] .= reshape(L_mg[k]\(f_mg[k][:] .- U_mg[k]*u_mg[k][:]),lnx[k]+1,lny[k]+1) # gauss seidel
+                        u_mg[k][:] .= L_mg[k] \ (f_mg[k][:] .- U_mg[k]*u_mg[k][:])
                     elseif iter_algo == "SOR"
-                        u_mg[k][:] = (1-ω) * u_mg[k][:] .+ ω * L_mg[k] \ (f_mg[k][:] .- U_mg[k]*u_mg[k][:]) # SOR
+                        # u_mg[k][:] = (1-ω) * u_mg[k][:] .+ ω * L_mg[k] \ (f_mg[k][:] .- U_mg[k]*u_mg[k][:]) # SOR
+                        sor!(u_mg[k][:],A_mg[k],f_mg[k][:],ω;maxiter=1)
                     elseif iter_algo == "jacobi"
                         jacobi!(u_mg[k][:],A_mg[k],f_mg[k][:],maxiter=1)
                     end
@@ -426,9 +430,11 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=
             elseif k == n_level
                 for i in 1:v2
                     if iter_algo == "gauss_seidel"
-                        u_mg[k] .= reshape(L_mg[k]\(f_mg[k][:] .- U_mg[k]*u_mg[k][:]),lnx[k]+1,lny[k]+1) # gauss seidel
+                        # u_mg[k] .= reshape(L_mg[k]\(f_mg[k][:] .- U_mg[k]*u_mg[k][:]),lnx[k]+1,lny[k]+1) # gauss seidel
+                        u_mg[k][:] .= L_mg[k] \ (f_mg[k][:] .- U_mg[k]*u_mg[k][:])
                     elseif iter_algo == "SOR"
-                        u_mg[k][:] = (1-ω) * u_mg[k][:] .+ ω * L_mg[k] \ (f_mg[k][:] .- U_mg[k]*u_mg[k][:]) # SOR
+                        # u_mg[k][:] = (1-ω) * u_mg[k][:] .+ ω * L_mg[k] \ (f_mg[k][:] .- U_mg[k]*u_mg[k][:]) # SOR
+                        sor!(u_mg[k][:],A_mg[k],f_mg[k][:],ω;maxiter=1)
                     elseif iter_algo == "jacobi"
                         jacobi!(u_mg[k][:],A_mg[k],f_mg[k][:],maxiter=1)
                         # u_mg[k][:] = A_mg[k] \ f_mg[k][:]
@@ -450,18 +456,21 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=
 
             # update u_mg
 
-            for j = 2:lnx[k-1] for i = 2:lny[k-1]
+            # for j = 2:lnx[k-1] for i = 2:lny[k-1]
+            for j = 1:lnx[k-1]+1 for i in 1:lnx[k-1]+1
                 u_mg[k-1][i,j] = u_mg[k-1][i,j] + prol_fine[i,j]
             end end
 
             # Gauss seidel iteration
             for i in 1:v3
                 if iter_algo == "gauss_seidel"
-                    u_mg[k-1] .= reshape(L_mg[k-1]\(f_mg[k-1][:] .- U_mg[k-1]*u_mg[k-1][:]),lnx[k-1]+1,lny[k-1]+1)
+                    # u_mg[k-1] .= reshape(L_mg[k-1]\(f_mg[k-1][:] .- U_mg[k-1]*u_mg[k-1][:]),lnx[k-1]+1,lny[k-1]+1)
+                    u_mg[k-1][:] .= L_mg[k-1] \ (f_mg[k-1][:] .- U_mg[k-1]*u_mg[k-1][:])
                 elseif iter_algo == "SOR"
-                    u_mg[k-1][:] = (1-ω) * u_mg[k-1][:] .+ L_mg[k-1]\(f_mg[k-1][:] .- U_mg[k-1]*u_mg[k-1][:]) 
+                    # u_mg[k-1][:] = (1-ω) * u_mg[k-1][:] .+ ω * L_mg[k-1]\(f_mg[k-1][:] .- U_mg[k-1]*u_mg[k-1][:]) 
+                    sor!(u_mg[k-1][:],A_mg[k-1],f_mg[k-1][:],ω,maxiter=1)
                 elseif iter_algo == "jacobi"
-                    jacobi!(u_mg[k-1],A_mg[k-1],f_mg[k-1][:],maxiter=1)
+                    jacobi!(u_mg[k-1][:],A_mg[k-1],f_mg[k-1][:],maxiter=1)
                 end
             end
         end
