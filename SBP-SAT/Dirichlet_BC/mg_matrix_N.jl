@@ -154,7 +154,6 @@ end
 
 
 
-
 # function initialize_uf(u_n, f_array)
 function initialize_uf(nx,ny;ipr=1)
     # u_n = Array{Float64}(undef, nx+1, ny+1)
