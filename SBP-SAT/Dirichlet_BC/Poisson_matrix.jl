@@ -199,3 +199,8 @@ function poisson_sbp_sat_matrix(nx,ny,dx,dy)
 
     return A_DDDD, b_DDDD
 end
+
+
+function isdiagonallydominal(A)
+    all(sum(abs.(A),dims=2) .<= 2*abs.(diag(A)))
+end
