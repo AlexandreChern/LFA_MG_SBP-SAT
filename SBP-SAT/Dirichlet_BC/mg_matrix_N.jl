@@ -433,7 +433,8 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=
                         u_mg[k][:] .= L_mg[k] \ (f_mg[k][:] .- U_mg[k]*u_mg[k][:])
                     elseif iter_algo == "SOR"
                         # u_mg[k][:] = (1-ω) * u_mg[k][:] .+ ω * L_mg[k] \ (f_mg[k][:] .- U_mg[k]*u_mg[k][:]) # SOR
-                        u_mg[k][:] .= sor!(u_mg[k][:],A_mg[k],f_mg[k][:],ω;maxiter=1)
+                        # u_mg[k][:] .= sor!(u_mg[k][:],A_mg[k],f_mg[k][:],ω;maxiter=1)
+                        u_mg[k][:] .= cg!(u_mg[k][:],A_mg[k],f_mg[k][:]) # solve using CG
                     elseif iter_algo == "jacobi"
                         u_mg[k][:] .= jacobi!(u_mg[k][:],A_mg[k],f_mg[k][:],maxiter=1)
                         # u_mg[k][:] = A_mg[k] \ f_mg[k][:]
