@@ -264,6 +264,7 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=
     # compute initial residual
 
     r[:] = f_array[:] - A_mg[1]*u_n[:]
+    u_exact = (xs.^2 .-1) .* (ys'.^2 .- 1)
 
 
     # Compute initial L-2 norm
@@ -356,7 +357,9 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=
 
         if iteration_count % 5 == 0
             contourf(xs,ys,r,levels=20,color=:turbo)
-            savefig("figures/$(iteration_count).png")
+            savefig("figures/$(iteration_count)_res.png")
+            contourf(xs,ys,u_mg[1]-u_exact,levels=20,color=:turbo)
+            savefig("figures/$(iteration_count)_error.png")
         end
 
 
