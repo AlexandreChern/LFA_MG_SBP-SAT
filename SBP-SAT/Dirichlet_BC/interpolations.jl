@@ -82,3 +82,31 @@ function restriction_matrix_v2(nxf,nyf,nxc,nyc)
     restriction_matrix_ = kron(restriction_matrix_x,restriction_matrix_y)
     return restriction_matrix_
 end
+
+
+"""
+    prolongation_matrix_v3(nxf,nyf,nxc,nyc)
+    Generating restriction matrix from coarse grid (nxc, nyc) to fine grid (nxf,nyf)
+    The matrix size generated is (nxf+1) * (nyf+1)) by ((nxc+1) * (nyc+1) 
+
+    # Examples
+    julia> prolongation_matrix(4,4,2,2)
+    25×9 SparseMatrixCSC{Float64, Int64} with 25 stored entries:
+    ⢱⠀⠀⠀⠀
+    ⠀⠑⡄⠀⠀
+    ⠀⠠⡑⠀⠀
+    ⠀⢀⠣⠀⠀
+    ⠀⠀⢇⠀⠀
+    ⠀⠀⠀⢱⠀
+    ⠀⠀⠀⠀⠁
+"""
+function prolongation_matrix_v3(nxf,nyf,nxc,nyc)
+    Ix = spdiagm(-1 => fill(-1.0,nxf-1), 0 => fill(2.0,nxf), 1 => fill(-1.0,nxf-1))
+    Iy = spdiagm(-1 => fill(-1.0,nyf-1), 0 => fill(2.0,nyf), 1 => fill(-1.0,nyf-1))
+    P = kron(Iy,Ix)
+    P = P[1:end-nyf,1:end-1]
+    P = [P[:,1] P P[:,end]]
+    # P = kron(speye(nyc+1),kron(speye(nxc+1),P))
+    P = kron(sparse(I,nyc+1,nyc+1),kron(sparse(I,nxc+1,nxc+1),P))
+    return P
+end

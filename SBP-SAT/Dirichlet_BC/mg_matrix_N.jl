@@ -229,7 +229,7 @@ end
 
 function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=1,interp="normal",ω=1)
     # ω = 1 # damping coefficient for SOR
-    iter_algos = ["gauss_seidel","SOR","jacobi"]
+    iter_algos = ["gauss_seidel","SOR","jacobi","chebyshev","richardson"]
     iter_algo = iter_algos[iter_algo_num]
     maximum_iterations = 120 #nx*ny # set maximum_iterations
     u_n, f_array = initialize_uf(nx,ny)
@@ -345,7 +345,11 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=
                 # u_mg[1][:] .= (1-ω) * u_mg[1][:] .+ ω * L_mg[1]\(f_mg[1][:] .- U_mg[1]*u_mg[1][:])
                 u_mg[1][:] .= sor!(u_mg[1][:],A_mg[1],f_mg[1][:],ω;maxiter=1)
             elseif iter_algo == "jacobi"
-                u_mg[1][:] .= jacobi!(u_mg[1][:],A_mg[1],f_mg[1][:],maxiter=1)
+                u_mg[1][:] .= ω * jacobi!(u_mg[1][:],A_mg[1],f_mg[1][:],maxiter=1) .+ (1-ω) *  u_mg[1][:]
+            elseif iter_algo == "chebyshev"
+                u_mg[1][:] .= chebyshev!(u_mg[1][:],A_mg[1],f_mg[1][:],0,40,maxiter=1)
+            elseif iter_algo == "richardson"
+                u_mg[1][:] .= u_mg[1][:] .+ ω * (f_mg[1][:] .- A_mg[1]*u_mg[1][:])
             end
         end
 
@@ -426,7 +430,11 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=
                         # u_mg[k][:] = (1-ω) * u_mg[k][:] .+ ω * L_mg[k] \ (f_mg[k][:] .- U_mg[k]*u_mg[k][:]) # SOR
                         u_mg[k][:] .= sor!(u_mg[k][:],A_mg[k],f_mg[k][:],ω;maxiter=1)
                     elseif iter_algo == "jacobi"
-                        u_mg[k][:] .= jacobi!(u_mg[k][:],A_mg[k],f_mg[k][:],maxiter=1)
+                        u_mg[k][:] .= ω * jacobi!(u_mg[k][:],A_mg[k],f_mg[k][:],maxiter=1) .+ (1-ω) * u_mg[k][:]
+                    elseif iter_algo == "chebyshev"
+                        u_mg[k][:] .= chebyshev!(u_mg[k][:],A_mg[k],f_mg[k][:],0,40,maxiter=1)
+                    elseif iter_algo == "richardson"
+                        u_mg[k][:] .= u_mg[k][:] .+ ω * (f_mg[k][:] .- A_mg[k]*u_mg[k][:])
                     end
                 end
             elseif k == n_level
@@ -436,11 +444,15 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=
                         u_mg[k][:] .= L_mg[k] \ (f_mg[k][:] .- U_mg[k]*u_mg[k][:])
                     elseif iter_algo == "SOR"
                         # u_mg[k][:] = (1-ω) * u_mg[k][:] .+ ω * L_mg[k] \ (f_mg[k][:] .- U_mg[k]*u_mg[k][:]) # SOR
-                        # u_mg[k][:] .= sor!(u_mg[k][:],A_mg[k],f_mg[k][:],ω;maxiter=1)
-                        u_mg[k][:] .= cg!(u_mg[k][:],A_mg[k],f_mg[k][:]) # solve using CG
+                        u_mg[k][:] .= sor!(u_mg[k][:],A_mg[k],f_mg[k][:],ω;maxiter=1)
+                        # u_mg[k][:] .= cg!(u_mg[k][:],A_mg[k],f_mg[k][:]) # solve using CG
                     elseif iter_algo == "jacobi"
-                        u_mg[k][:] .= jacobi!(u_mg[k][:],A_mg[k],f_mg[k][:],maxiter=1)
+                        u_mg[k][:] .= ω * jacobi!(u_mg[k][:],A_mg[k],f_mg[k][:],maxiter=1) .+ (1-ω) * u_mg[k][:]
                         # u_mg[k][:] = A_mg[k] \ f_mg[k][:]
+                    elseif iter_algo == "chebyshev"
+                        u_mg[k][:] .= chebyshev!(u_mg[k][:],A_mg[k],f_mg[k][:],0,40,maxiter=1)
+                    elseif iter_algo == "richardson"
+                        u_mg[k][:] .= u_mg[k][:] .+ ω * (f_mg[k][:] .- A_mg[k]*u_mg[k][:])
                     end
                 end
             end
@@ -473,7 +485,11 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=
                     # u_mg[k-1][:] = (1-ω) * u_mg[k-1][:] .+ ω * L_mg[k-1]\(f_mg[k-1][:] .- U_mg[k-1]*u_mg[k-1][:]) 
                     u_mg[k-1][:] .= sor!(u_mg[k-1][:],A_mg[k-1],f_mg[k-1][:],ω,maxiter=1)
                 elseif iter_algo == "jacobi"
-                    u_mg[k-1][:] .= jacobi!(u_mg[k-1][:],A_mg[k-1],f_mg[k-1][:],maxiter=1)
+                    u_mg[k-1][:] .= ω * jacobi!(u_mg[k-1][:],A_mg[k-1],f_mg[k-1][:],maxiter=1) .+ (1-ω) * u_mg[k-1][:]
+                elseif iter_algo == "chebyshev"
+                    u_mg[k-1][:] .= chebyshev!(u_mg[k-1][:],A_mg[k-1],f_mg[k-1][:],0,40,maxiter=1)
+                elseif iter_algo == "richardson"
+                    u_mg[k-1][:] .= u_mg[k-1][:] .+ ω * (f_mg[k-1][:] .- A_mg[k-1]*u_mg[k-1][:])
                 end
             end
         end

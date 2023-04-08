@@ -10,3 +10,8 @@ Using more iterations on the for smoothers would accelerate the MG performance s
 
 The bad performance of MG for the SBP-SAT method is very likely coming from the smoothers. The Jacobi / Gauss-Seidel method is not a good smoother on the coarsest grid. While they perform well with the central finite difference with injected boundary conditions
 
+
+
+Notes from April 7
+
+Arpack package provides eigvals solver for sparse format eigs

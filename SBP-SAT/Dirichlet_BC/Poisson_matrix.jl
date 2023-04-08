@@ -167,7 +167,7 @@ function poisson_sbp_sat_matrix(nx,ny,dx,dy)
 
     # println("I am changing parameters again")
 
-    beta = -1;
+    beta = -1; # -1 by default 
 
     ## Formulation 1
     SAT_W = tau_W*HI_x*E_W + beta*HI_x*BS_x'*E_W;
