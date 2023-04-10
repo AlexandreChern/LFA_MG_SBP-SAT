@@ -357,29 +357,30 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=
         # @show size(f_array)
         # @show size(poisson_matrix_)
         # r = reshape((f_array[:] .- poisson_matrix_ * u_mg[1][:]),nx+1,ny+1)
-        r = reshape((f_array[:] .- A_mg[1] * u_mg[1][:]),nx+1,ny+1)
 
-        if iteration_count % 5 == 0
-            contourf(xs,ys,r,levels=20,color=:turbo)
-            savefig("figures/$(iteration_count)_res.png")
-            contourf(xs,ys,u_mg[1]-u_exact,levels=20,color=:turbo)
-            savefig("figures/$(iteration_count)_error.png")
-        end
+        # r = reshape((f_array[:] .- A_mg[1] * u_mg[1][:]),nx+1,ny+1)
+
+        # if iteration_count % 5 == 0
+        #     contourf(xs,ys,r,levels=20,color=:turbo)
+        #     savefig("figures/$(iteration_count)_res.png")
+        #     contourf(xs,ys,u_mg[1]-u_exact,levels=20,color=:turbo)
+        #     savefig("figures/$(iteration_count)_error.png")
+        # end
 
 
-        # compute l2norm of the residual
-        rms = compute_l2norm(lnx[1],lny[1],r)
+        # # compute l2norm of the residual
+        # rms = compute_l2norm(lnx[1],lny[1],r)
 
-        # write results only for the finest residual
-        # ...
+        # # write results only for the finest residual
+        # # ...
 
-        # count = iteration_count
-        # count = iteration_count
-        # @show (rms)
-        println(mg_iter_count, " ", rms, " ", rms/init_rms)
-        if (rms/init_rms) <= tolerance
-            break
-        end
+        # # count = iteration_count
+        # # count = iteration_count
+        # # @show (rms)
+        # println(mg_iter_count, " ", rms, " ", rms/init_rms)
+        # if (rms/init_rms) <= tolerance
+        #     break
+        # end
 
         # from second level to coarsest level
         for k = 2:n_level
@@ -493,5 +494,35 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=
                 end
             end
         end
+        r = reshape((f_array[:] .- A_mg[1] * u_mg[1][:]),nx+1,ny+1)
+
+        if iteration_count % 5 == 0
+            contourf(xs,ys,r,levels=20,color=:turbo)
+            savefig("figures/$(iteration_count)_res.png")
+            contourf(xs,ys,u_mg[1]-u_exact,levels=20,color=:turbo)
+            savefig("figures/$(iteration_count)_error.png")
+        end
+
+
+        # compute l2norm of the residual
+        rms = compute_l2norm(lnx[1],lny[1],r)
+
+        # write results only for the finest residual
+        # ...
+
+        # count = iteration_count
+        # count = iteration_count
+        # @show (rms)
+        println(mg_iter_count, " ", rms, " ", rms/init_rms)
+        if (rms/init_rms) <= tolerance
+            break
+        end
     end
+    return u_mg[1], A_mg[1], f_mg[1]
+end
+
+
+function test_MG_then_CG(;Nx=256,Ny=256,n_levels=5)
+    x, A, b = mg_matrix_N(Nx,Ny,n_levels,iter_algo_num=3,ω=.82,v1=v3=2,maximum_iterations=7,interp="normal")
+    ans, history = cg!(x[:],A,b[:];log=true)
 end
