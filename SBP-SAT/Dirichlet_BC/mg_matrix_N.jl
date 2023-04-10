@@ -309,7 +309,7 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=
         push!(f_mg, fc)
     end
 
-    println("Starting assembling restriction matrices")
+    println("Starting assembling interpolation matrices")
     for k in 1:n_level-1
         if interp == "normal"
             push!(rest_mg, restriction_matrix(lnx[k],lny[k],lnx[k+1],lny[k+1]))
@@ -319,7 +319,7 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=
             push!(prol_mg, prolongation_matrix_v2(lnx[k],lny[k],lnx[k+1],lny[k+1]))
         end
     end
-    println("Finishing assembling restriction matrices")
+    println("Finishing assembling interpolation matrices")
 
     # allocate matrix for storage at fine level
     # residual at fine level is already defined at global level
