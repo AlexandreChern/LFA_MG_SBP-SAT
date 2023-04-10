@@ -227,11 +227,11 @@ end
 #######################################################################
 ## Starting multigrid
 
-function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=1,interp="normal",ω=1)
+function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=1,interp="normal",ω=1,maximum_iterations=120)
     # ω = 1 # damping coefficient for SOR
     iter_algos = ["gauss_seidel","SOR","jacobi","chebyshev","richardson"]
     iter_algo = iter_algos[iter_algo_num]
-    maximum_iterations = 120 #nx*ny # set maximum_iterations
+    # maximum_iterations = 120 #nx*ny # set maximum_iterations
     u_n, f_array = initialize_uf(nx,ny)
     dx = 1.0 ./nx
     dy = 1.0 ./ny
