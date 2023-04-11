@@ -3,7 +3,7 @@ using LinearAlgebra
 
 """
     prolongation_matrix_v2(nxf,nyf,nxc,nyc)
-    Generating restriction matrix from coarse grid (nxc, nyc) to fine grid (nxf,nyf)
+    Generating SBP-preserving restriction matrix from coarse grid (nxc, nyc) to fine grid (nxf,nyf)
     The matrix size generated is (nxf+1) * (nyf+1)) by ((nxc+1) * (nyc+1) 
 
     # Examples
@@ -44,7 +44,7 @@ end
 
 """
     restriction_matrix_v2(nxf,nyf,nxc,nyc)
-    Generating restriction matrix from fine grid (nxf,nyf) to coarse grid (nxc, nyc)
+    Generating SBP-preserving restriction matrix from fine grid (nxf,nyf) to coarse grid (nxc, nyc)
     The matrix size generated is ((nxc+1) * (nyc+1) by (nxf+1) * (nyf+1))
     
     # Examples
