@@ -227,7 +227,7 @@ end
 #######################################################################
 ## Starting multigrid
 
-function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=1,interp="normal",ω=1,maximum_iterations=120)
+function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=1,interp="normal",ω=1,maximum_iterations=120,plot_figure=false)
     # ω = 1 # damping coefficient for SOR
     iter_algos = ["gauss_seidel","SOR","jacobi","chebyshev","richardson"]
     iter_algo = iter_algos[iter_algo_num]
@@ -496,11 +496,13 @@ function mg_matrix_N(nx,ny,n_level;v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=
         end
         r = reshape((f_array[:] .- A_mg[1] * u_mg[1][:]),nx+1,ny+1)
 
-        if iteration_count % 5 == 0
-            contourf(xs,ys,r,levels=20,color=:turbo)
-            savefig("figures/$(iteration_count)_res.png")
-            contourf(xs,ys,u_mg[1]-u_exact,levels=20,color=:turbo)
-            savefig("figures/$(iteration_count)_error.png")
+        if plot_figure == true
+            if iteration_count % 5 == 0
+                contourf(xs,ys,r,levels=20,color=:turbo)
+                savefig("figures/$(iteration_count)_res.png")
+                contourf(xs,ys,u_mg[1]-u_exact,levels=20,color=:turbo)
+                savefig("figures/$(iteration_count)_error.png")
+            end
         end
 
 
