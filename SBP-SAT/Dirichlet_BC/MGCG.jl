@@ -73,7 +73,7 @@ function mgcg(mg_struct,A0,b0,u0;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,tolerance=
     # compute initial L-2 norm
     rms = compute_l2norm(nx,ny,mg_struct.r_mg[1])
     init_rms = rms
-    mg_ter_count = 0
+    mg_iter_count = 0
     println("0", " ", rms, " ", rms/init_rms)
     if nx < (2^n_level)
         println("Number of levels exceeds the possible number.")
