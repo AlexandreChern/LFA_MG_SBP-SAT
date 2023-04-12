@@ -16,7 +16,21 @@ end
 
 mg_struct = MG([],[],[],[],[],[],[],[],[],[])
 
+function clear_mg_struct(mg_struct)
+    mg_struct.A_mg = []
+    mg_struct.L_mg = []
+    mg_struct.U_mg = []
+    mg_struct.f_mg = []
+    mg_struct.u_mg = []
+    mg_struct.r_mg = []
+    mg_struct.rest_mg = []
+    mg_struct.prol_mg = []
+    mg_struct.lnx_mg = []
+    mg_struct.lny_mg = []
+end
+
 function initialize_mg_struct(mg_struct,nx,ny,n_level)
+    clear_mg_struct(mg_struct)
     A_mg = mg_struct.A_mg
     L_mg = mg_struct.L_mg
     U_mg = mg_struct.U_mg
@@ -27,7 +41,7 @@ function initialize_mg_struct(mg_struct,nx,ny,n_level)
     prol_mg = mg_struct.prol_mg
     lnx_mg = mg_struct.lnx_mg
     lny_mg = mg_struct.lny_mg
-    if isempty(A_mg)
+    if isempty(A_mg) 
         # Assembling matrices
         for k in 1:n_level
             nx,ny = nx,ny
@@ -55,13 +69,15 @@ function initialize_mg_struct(mg_struct,nx,ny,n_level)
     end
 end
 
-function mgcg(mg_struct,A0,b0,u0;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=1,interp="normal",ω=1,maximum_iterations=120)
+function mg_solver(mg_struct, f_in ;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=1,interp="normal",ω=1.8,maximum_iterations=120)
     initialize_mg_struct(mg_struct,nx,ny,n_level)
+    # mg_struct.u_mg[1][:] .= u_in
+    mg_struct.f_mg[1][:] .= copy(f_in)[:]
+    mg_struct.u_mg[1][:] .= spzeros(nx+1,ny+1)[:]
     # ω = 1 # damping coefficient for SOR
     iter_algos = ["gauss_seidel","SOR","jacobi","chebyshev","richardson"]
     iter_algo = iter_algos[iter_algo_num]
     # maximum_iterations = 120 #nx*ny # set maximum_iterations
-
     # compute the initial residual
     mg_struct.r_mg[1][:] = mg_struct.f_mg[1][:] - mg_struct.A_mg[1] * mg_struct.u_mg[1][:]
     dx = 1.0 ./nx
@@ -149,8 +165,8 @@ function mgcg(mg_struct,A0,b0,u0;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,tolerance=
                         mg_struct.u_mg[k][:] .= mg_struct.L_mg[k] \ (mg_struct.f_mg[k][:] .- mg_struct.U_mg[k] * mg_struct.u_mg[k][:])
                     elseif iter_algo == "SOR"
                         # u_mg[k][:] = (1-ω) * u_mg[k][:] .+ ω * L_mg[k] \ (f_mg[k][:] .- U_mg[k]*u_mg[k][:]) # SOR
-                        mg_struct.u_mg[k][:] .= sor!(mg_struct.u_mg[k][:],mg_struct.A_mg[k],mg_struct.f_mg[k][:],ω;maxiter=1)
-                        # mg_struct.u_mg[k][:] .= cg!(mg_struct.u_mg[k][:],mg_struct.A_mg[k],mg_struct.f_mg[k][:]) # solve using CG
+                        # mg_struct.u_mg[k][:] .= sor!(mg_struct.u_mg[k][:],mg_struct.A_mg[k],mg_struct.f_mg[k][:],ω;maxiter=1)
+                        mg_struct.u_mg[k][:] .= cg!(mg_struct.u_mg[k][:],mg_struct.A_mg[k],mg_struct.f_mg[k][:]) # solve using CG
                     elseif iter_algo == "jacobi"
                         mg_struct.u_mg[k][:] .= ω * jacobi!(mg_struct.u_mg[k][:],mg_struct.A_mg[k],mg_struct.f_mg[k][:],maxiter=1) .+ (1-ω) * mg_struct.u_mg[k][:]
                     elseif iter_algo == "chebyshev"
@@ -205,11 +221,45 @@ function mgcg(mg_struct,A0,b0,u0;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,tolerance=
 
         rms = compute_l2norm(mg_struct.lnx_mg[1],mg_struct.lny_mg[1],mg_struct.r_mg[1])
     end
+    return mg_struct.u_mg[1]
 end
 
 
+function mgcg(mg_struct;nx=64,ny=64,n_level=3,maxiter=10,iter_algo_num=2)
+    x = spzeros(nx+1,ny+1)
+    r = spzeros(size(x))
+    A,b = poisson_sbp_sat_matrix(nx,ny,1/nx,1/ny)
+    r[:] .= b[:] .- A * x[:]
+    init_rms = norm(r)
+    @show init_rms
+    z = spzeros(size(r));
+    z .= mg_solver(mg_struct, r, maximum_iterations=10, nx=nx, ny=ny, iter_algo_num=iter_algo_num);
+    # z[:] .= r[:]
+    p = spzeros(size(r));
+    p .= z ;
+    counter = 0
+    for k in 1:maxiter
+        α = dot(r[:],z[:]) / (dot(p[:],A*p[:]))
+        x .= x .+ α * p
+        r_new = r[:] .- α * A * p[:]
+        @show norm(r_new) norm(r_new) / init_rms
+        if norm(r_new) < 1e-6 * init_rms
+            break
+        end
+        z_new = mg_solver(mg_struct, r_new, maximum_iterations=10, nx=nx, ny=ny, iter_algo_num=iter_algo_num)
+        # z_new = copy(r_new)
+        β = dot(r_new[:],z_new[:]) / (dot(r[:],z[:]))
+        p[:] .= z_new[:] .+ β * p[:]
+        z[:] .= z_new[:]
+        r[:] .= r_new[:]
+        counter += 1
+    end
+    return x, counter
+end
+
 function test_mgcg()
-    u0 = randn(nx+1,ny+1)
+    # u0 = randn(nx+1,ny+1)
+    mgcg(mg_struct,nx=128,ny=128,maxiter=10,iter_algo_num=2)
 end
 
 function initial_global_params()
