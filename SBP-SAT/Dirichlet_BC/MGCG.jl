@@ -29,7 +29,7 @@ function clear_mg_struct(mg_struct)
     mg_struct.lny_mg = []
 end
 
-function initialize_mg_struct(mg_struct,nx,ny,n_level;use_galerkin=false)
+function initialize_mg_struct(mg_struct,nx,ny,n_level;use_galerkin=false,use_sbp=true)
     println("clearing matrices")
     clear_mg_struct(mg_struct)
     println("Starting assembling matrices")
@@ -67,8 +67,13 @@ function initialize_mg_struct(mg_struct,nx,ny,n_level;use_galerkin=false)
 
             push!(u_mg, spzeros(nx+1,ny+1))
             push!(r_mg, spzeros(nx+1,ny+1))
-            push!(rest_mg, restriction_matrix_v2(nx,ny,div(nx,2),div(ny,2)))
-            push!(prol_mg, prolongation_matrix_v2(nx,ny,div(nx,2),div(ny,2)))
+            if use_sbp
+                push!(rest_mg, restriction_matrix_v2(nx,ny,div(nx,2),div(ny,2)))
+                push!(prol_mg, prolongation_matrix_v2(nx,ny,div(nx,2),div(ny,2)))
+            else
+                push!(rest_mg, restriction_matrix_v1(nx,ny,div(nx,2),div(ny,2)))
+                push!(prol_mg, prolongation_matrix_v1(nx,ny,div(nx,2),div(ny,2)))
+            end
             push!(lnx_mg,nx)
             push!(lny_mg,ny)
             nx,ny = div(nx,2), div(ny,2)

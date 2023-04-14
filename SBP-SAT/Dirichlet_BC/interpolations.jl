@@ -109,23 +109,39 @@ function prolongation_matrix_v3(nxf,nyf,nxc,nyc)
     # # P = kron(speye(nyc+1),kron(speye(nxc+1),P))
     # P = kron(sparse(I,nyc+1,nyc+1),kron(sparse(I,nxc+1,nxc+1),P))
     # return P
-    prolongation_matrix_x = spzeros(nxf+1,nxc+1)
-    for i in 1:nxc
-        prolongation_matrix_x[2*i-1,i] = 1
-        prolongation_matrix_x[2*i,i] = 0.5
-        prolongation_matrix_x[2*i,i+1] = 0.5
-    end
-    prolongation_matrix_x[end,end] = 1
+    # prolongation_matrix_x = spzeros(nxf+1,nxc+1)
+    # for i in 1:nxc
+    #     prolongation_matrix_x[2*i-1,i] = 1
+    #     prolongation_matrix_x[2*i,i] = 0.5
+    #     prolongation_matrix_x[2*i,i+1] = 0.5
+    # end
+    # prolongation_matrix_x[end,end] = 1
 
-    prolongation_matrix_y = spzeros(nyf+1,nyc+1)
-    for i in 1:nyc
-        prolongation_matrix_y[2*i-1,i] = 1
-        prolongation_matrix_y[2*i,i] = 0.5
-        prolongation_matrix_y[2*i,i+1] = 0.5
-    end
-    prolongation_matrix_y[end,end] = 1
+    # prolongation_matrix_y = spzeros(nyf+1,nyc+1)
+    # for i in 1:nyc
+    #     prolongation_matrix_y[2*i-1,i] = 1
+    #     prolongation_matrix_y[2*i,i] = 0.5
+    #     prolongation_matrix_y[2*i,i+1] = 0.5
+    # end
+    # prolongation_matrix_y[end,end] = 1
 
-    prolongation_matrix_ = kron(prolongation_matrix_x,prolongation_matrix_y)
+    # prolongation_matrix_ = kron(prolongation_matrix_x,prolongation_matrix_y)
+    # return prolongation_matrix_
+    prolongation_matrix_ = spzeros((nxf+1)*(nyf+1),(nxc+1)*(nyc+1))
+    for j in 1:nyc+1
+        for i in 1:nxc+1
+            indexc = (j-1)* (nxc+1) + i
+            indexf = (2*j-1 -1) * (nxf+1) + (2*i-1) # careful about this index
+            # @show (indexc, indexf)
+            prolongation_matrix_[indexf,indexc] = 1.0  # direct injection instead of(4)/16.0
+            if (2 <= i <= nxc) && (2 <= j <= nyc)
+                prolongation_matrix_[indexf-nyf-1-1,indexc] = 0.25 #(1)/16.0
+                prolongation_matrix_[indexf-nyf-1+1,indexc] = 0.25 #(1)/16.0
+                prolongation_matrix_[indexf+nyf+1+1,indexc] = 0.25 #(1)/16.0
+                prolongation_matrix_[indexf+nyf+1-1,indexc] = 0.25 #(1)/16.0
+            end
+        end
+    end
     return prolongation_matrix_
 end
 
@@ -148,30 +164,56 @@ end
 """
 function prolongation_matrix_v1(nxf,nyf,nxc,nyc)
     prolongation_matrix_ = spzeros((nxf+1)*(nyf+1),(nxc+1)*(nyc+1))
-    for j in 1:nyc+1
-        for i in 1:nxc+1
+    for j in 1:nyc
+        for i in 1:nxc
             indexc = (j-1)* (nxc+1) + i
             indexf = (2*j-1 -1) * (nxf+1) + (2*i-1) # careful about this index
             # @show (indexc, indexf)
             prolongation_matrix_[indexf,indexc] = 1.0  # direct injection instead of(4)/16.0
-            if 2 <= i <= nxc
-                prolongation_matrix_[indexf+1,indexc] = 0.5 #(2)/16.0
-                prolongation_matrix_[indexf-1,indexc] = 0.5 #(2)/16.0
-            end
-            if 2 <= j <= nxc
-                prolongation_matrix_[indexf+nyf+1,indexc] = 0.5 #(2)/16.0
-                prolongation_matrix_[indexf-nyf-1,indexc] = 0.5 #(2)/16.0
-            end
-            if (2 <= i <= nxc) && (2 <= j <= nyc)
-                prolongation_matrix_[indexf-nyf-1-1,indexc] = 0.25 #(1)/16.0
-                prolongation_matrix_[indexf-nyf-1+1,indexc] = 0.25 #(1)/16.0
-                prolongation_matrix_[indexf+nyf+1+1,indexc] = 0.25 #(1)/16.0
-                prolongation_matrix_[indexf+nyf+1-1,indexc] = 0.25 #(1)/16.0
-            end
+
+            # east neighbors
+            prolongation_matrix_[indexf + nyf + 1, indexc] = 0.5
+            prolongation_matrix_[indexf + nyf + 1, indexc + nxc + 1] = 0.5
+
+            # north neighbors
+            prolongation_matrix_[indexf + 1, indexc] = 0.5
+            prolongation_matrix_[indexf + 1, indexc + 1] = 0.5
+
+            # prolongation_matrix_[indexf+1,indexc] = 0.5 #(2)/16.0
+            # prolongation_matrix_[indexf-1,indexc] = 0.5 #(2)/16.0
+            
+            # prolongation_matrix_[indexf+nyf+1,indexc] = 0.5 #(2)/16.0
+            # prolongation_matrix_[indexf-nyf-1,indexc] = 0.5 #(2)/16.0
+            
+            # north east neighbors
+            # prolongation_matrix_[indexf-nyf-1-1,indexc] = 0.25 #(1)/16.0
+            # prolongation_matrix_[indexf-nyf-1+1,indexc] = 0.25 #(1)/16.0
+            # prolongation_matrix_[indexf+nyf+1+1,indexc] = 0.25 #(1)/16.0
+            # prolongation_matrix_[indexf+nyf+1-1,indexc] = 0.25 #(1)/16.0
+            prolongation_matrix_[indexf + nyf + 1 + 1, indexc] = 0.25
+            prolongation_matrix_[indexf + nyf + 1 + 1, indexc + nxc + 1] = 0.25
+            prolongation_matrix_[indexf + nyf + 1 + 1, indexc + 1] = 0.25
+            prolongation_matrix_[indexf + nyf + 1 + 1, indexc + nxc + 1 + 1] = 0.25
         end
     end
+
+    for i = 1:nyc+1
+        # left boundary
+        prolongation_matrix_[(2*i-1),i] = 1
+        # right boundary
+        prolongation_matrix_[(2*i-1 + nyf * (nxf+1) ), i + nyc * (nxc+1)] = 1
+    end
+
+    for j = 1:nxc+1
+        # left boundary
+        prolongation_matrix_[1 + (2*j-1 - 1) * (nxf+1), 1 + (j-1) * (nxc+1)] = 1
+        # right boundary
+        prolongation_matrix_[nxf+1 + (2*j-1 - 1) * (nxf+1), nxc+1 + (j-1) * (nxc+1)] = 1
+    end
+
     return prolongation_matrix_
 end
+
 
 """
     restriction_matrix(nxf,nyf,nxc,nyc)
