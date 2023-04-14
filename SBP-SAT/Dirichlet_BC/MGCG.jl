@@ -29,7 +29,7 @@ function clear_mg_struct(mg_struct)
     mg_struct.lny_mg = []
 end
 
-function initialize_mg_struct(mg_struct,nx,ny,n_level)
+function initialize_mg_struct(mg_struct,nx,ny,n_level;use_galerkin=false)
     println("clearing matrices")
     clear_mg_struct(mg_struct)
     println("Starting assembling matrices")
@@ -48,11 +48,17 @@ function initialize_mg_struct(mg_struct,nx,ny,n_level)
         for k in 1:n_level
             nx,ny = nx,ny
             hx,hy = 1/nx, 1/ny
-            A_DDDD, b_DDDD = poisson_sbp_sat_matrix(nx,ny,hx,hy)
-            push!(A_mg,A_DDDD)
             if k == 1
+                A_DDDD, b_DDDD = poisson_sbp_sat_matrix(nx,ny,hx,hy)
+                push!(A_mg,A_DDDD)
                 push!(f_mg,reshape(b_DDDD,nx+1,ny+1))
             else
+                if use_galerkin
+                    A_DDDD = rest_mg[k-1] * A_mg[k-1] * prol_mg[k-1]
+                else
+                    A_DDDD, b_DDDD = poisson_sbp_sat_matrix(nx,ny,hx,hy)
+                end
+                push!(A_mg,A_DDDD)
                 push!(f_mg, spzeros(nx+1,ny+1))
             end
             # push!(L_mg, LowerTriangular(A_mg[k]))
@@ -72,11 +78,11 @@ function initialize_mg_struct(mg_struct,nx,ny,n_level)
     println("Ending resembling matrices")
 end
 
-function mg_solver(mg_struct, f_in ;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=1,interp="normal",ω=1.8,maximum_iterations=120)
-    initialize_mg_struct(mg_struct,nx,ny,n_level)
+function mg_solver(mg_struct, f_in ;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=1,interp="normal",ω=1,maximum_iterations=120,use_galerkin=false)
+    initialize_mg_struct(mg_struct,nx,ny,n_level,use_galerkin=use_galerkin)
     # mg_struct.u_mg[1][:] .= u_in
     mg_struct.f_mg[1][:] .= copy(f_in)[:]
-    # mg_struct.u_mg[1][:] .= spzeros(nx+1,ny+1)[:]
+    mg_struct.u_mg[1][:] .= spzeros(nx+1,ny+1)[:]
     # ω = 1 # damping coefficient for SOR
     iter_algos = ["gauss_seidel","SOR","jacobi","chebyshev","richardson"]
     iter_algo = iter_algos[iter_algo_num]
@@ -113,7 +119,7 @@ function mg_solver(mg_struct, f_in ;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,toleran
     println("Starting Multigrid Iterations")
     for iteration_count = 1:maximum_iterations
         mg_iter_count += 1
-        @show mg_iter_count
+        # @show mg_iter_count
 
         # starting pre-smoothing on the finest grid
         for i in 1:v1
@@ -169,8 +175,8 @@ function mg_solver(mg_struct, f_in ;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,toleran
                         mg_struct.u_mg[k][:] .= mg_struct.L_mg[k] \ (mg_struct.f_mg[k][:] .- mg_struct.U_mg[k] * mg_struct.u_mg[k][:])
                     elseif iter_algo == "SOR"
                         # u_mg[k][:] = (1-ω) * u_mg[k][:] .+ ω * L_mg[k] \ (f_mg[k][:] .- U_mg[k]*u_mg[k][:]) # SOR
-                        # mg_struct.u_mg[k][:] .= sor!(mg_struct.u_mg[k][:],mg_struct.A_mg[k],mg_struct.f_mg[k][:],ω;maxiter=1)
-                        mg_struct.u_mg[k][:] .= cg!(mg_struct.u_mg[k][:],mg_struct.A_mg[k],mg_struct.f_mg[k][:]) # solve using CG
+                        mg_struct.u_mg[k][:] .= sor!(mg_struct.u_mg[k][:],mg_struct.A_mg[k],mg_struct.f_mg[k][:],ω;maxiter=1)
+                        # mg_struct.u_mg[k][:] .= cg!(mg_struct.u_mg[k][:],mg_struct.A_mg[k],mg_struct.f_mg[k][:]) # solve using CG
                     elseif iter_algo == "jacobi"
                         mg_struct.u_mg[k][:] .= ω * jacobi!(mg_struct.u_mg[k][:],mg_struct.A_mg[k],mg_struct.f_mg[k][:],maxiter=1) .+ (1-ω) * mg_struct.u_mg[k][:]
                     elseif iter_algo == "chebyshev"
@@ -224,6 +230,7 @@ function mg_solver(mg_struct, f_in ;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,toleran
         # end
 
         rms = compute_l2norm(mg_struct.lnx_mg[1],mg_struct.lny_mg[1],mg_struct.r_mg[1])
+        println("$(iteration_count)", " ", rms, " ", rms/init_rms)
     end
     return mg_struct.u_mg[1]
 end

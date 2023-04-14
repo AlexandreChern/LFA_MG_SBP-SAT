@@ -134,6 +134,16 @@ function restriction_matrix(nxf,nyf,nxc,nyc)
             end
         end
     end
+    for j in 1:nyc+1
+        for i in 1:nyc+1
+            indexc = (j-1)* (nxc+1) + i
+            indexf = (2*j-1 -1) * (nxf+1) + (2*i-1) # careful about this index
+            if i == 1 || i == nxc+1 || j == 1 || j == nyc+1
+                restriction_matrix_[indexc,:] .= 0
+                restriction_matrix_[indexc,indexf] = 1
+            end
+        end
+    end
     return restriction_matrix_
 end
 
