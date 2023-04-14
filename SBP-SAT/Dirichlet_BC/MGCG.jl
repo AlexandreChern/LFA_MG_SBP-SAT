@@ -30,7 +30,9 @@ function clear_mg_struct(mg_struct)
 end
 
 function initialize_mg_struct(mg_struct,nx,ny,n_level)
+    println("clearing matrices")
     clear_mg_struct(mg_struct)
+    println("Starting assembling matrices")
     A_mg = mg_struct.A_mg
     L_mg = mg_struct.L_mg
     U_mg = mg_struct.U_mg
@@ -67,13 +69,14 @@ function initialize_mg_struct(mg_struct,nx,ny,n_level)
             hx,hy = 2*hx, 2*hy
         end
     end
+    println("Ending resembling matrices")
 end
 
 function mg_solver(mg_struct, f_in ;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=1,interp="normal",ω=1.8,maximum_iterations=120)
     initialize_mg_struct(mg_struct,nx,ny,n_level)
     # mg_struct.u_mg[1][:] .= u_in
     mg_struct.f_mg[1][:] .= copy(f_in)[:]
-    mg_struct.u_mg[1][:] .= spzeros(nx+1,ny+1)[:]
+    # mg_struct.u_mg[1][:] .= spzeros(nx+1,ny+1)[:]
     # ω = 1 # damping coefficient for SOR
     iter_algos = ["gauss_seidel","SOR","jacobi","chebyshev","richardson"]
     iter_algo = iter_algos[iter_algo_num]
@@ -110,6 +113,7 @@ function mg_solver(mg_struct, f_in ;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,toleran
     println("Starting Multigrid Iterations")
     for iteration_count = 1:maximum_iterations
         mg_iter_count += 1
+        @show mg_iter_count
 
         # starting pre-smoothing on the finest grid
         for i in 1:v1
@@ -225,7 +229,7 @@ function mg_solver(mg_struct, f_in ;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,toleran
 end
 
 
-function mgcg(mg_struct;nx=64,ny=64,n_level=3,maxiter=10,iter_algo_num=2)
+function mgcg(mg_struct;nx=64,ny=64,n_level=3,maxiter=10,iter_algo_num=2,maximum_iterations=10,precond=true)
     x = spzeros(nx+1,ny+1)
     r = spzeros(size(x))
     A,b = poisson_sbp_sat_matrix(nx,ny,1/nx,1/ny)
@@ -233,8 +237,11 @@ function mgcg(mg_struct;nx=64,ny=64,n_level=3,maxiter=10,iter_algo_num=2)
     init_rms = norm(r)
     @show init_rms
     z = spzeros(size(r));
-    z .= mg_solver(mg_struct, r, maximum_iterations=10, nx=nx, ny=ny, iter_algo_num=iter_algo_num);
-    # z[:] .= r[:]
+    if precond == true
+        z .= mg_solver(mg_struct, r, n_level=n_level, maximum_iterations=maximum_iterations, nx=nx, ny=ny, iter_algo_num=iter_algo_num);
+    else
+        z[:] .= r[:]
+    end
     p = spzeros(size(r));
     p .= z ;
     counter = 0
@@ -246,8 +253,11 @@ function mgcg(mg_struct;nx=64,ny=64,n_level=3,maxiter=10,iter_algo_num=2)
         if norm(r_new) < 1e-6 * init_rms
             break
         end
-        z_new = mg_solver(mg_struct, r_new, maximum_iterations=10, nx=nx, ny=ny, iter_algo_num=iter_algo_num)
-        # z_new = copy(r_new)
+        if precond == true
+            z_new = mg_solver(mg_struct, r_new, n_level=n_level, maximum_iterations=maximum_iterations, nx=nx, ny=ny, iter_algo_num=iter_algo_num)
+        else
+            z_new = copy(r_new)
+        end
         β = dot(r_new[:],z_new[:]) / (dot(r[:],z[:]))
         p[:] .= z_new[:] .+ β * p[:]
         z[:] .= z_new[:]
