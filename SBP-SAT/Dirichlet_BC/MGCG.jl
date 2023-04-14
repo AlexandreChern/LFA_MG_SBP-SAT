@@ -229,7 +229,7 @@ function mg_solver(mg_struct, f_in ;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,toleran
 end
 
 
-function mgcg(mg_struct;nx=64,ny=64,n_level=3,maxiter=10,iter_algo_num=2,maximum_iterations=10,precond=true)
+function mgcg(mg_struct;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,ω=1.8, maxiter=100,iter_algo_num=2,maximum_iterations=2,precond=true)
     x = spzeros(nx+1,ny+1)
     r = spzeros(size(x))
     A,b = poisson_sbp_sat_matrix(nx,ny,1/nx,1/ny)
@@ -238,7 +238,7 @@ function mgcg(mg_struct;nx=64,ny=64,n_level=3,maxiter=10,iter_algo_num=2,maximum
     @show init_rms
     z = spzeros(size(r));
     if precond == true
-        z .= mg_solver(mg_struct, r, n_level=n_level, maximum_iterations=maximum_iterations, nx=nx, ny=ny, iter_algo_num=iter_algo_num);
+        z .= mg_solver(mg_struct, r, n_level=n_level, v1=v1,v2=v2,v3=v3, maximum_iterations=maximum_iterations, nx=nx, ny=ny, iter_algo_num=iter_algo_num);
     else
         z[:] .= r[:]
     end
@@ -250,11 +250,11 @@ function mgcg(mg_struct;nx=64,ny=64,n_level=3,maxiter=10,iter_algo_num=2,maximum
         x .= x .+ α * p
         r_new = r[:] .- α * A * p[:]
         @show norm(r_new) norm(r_new) / init_rms
-        if norm(r_new) < 1e-6 * init_rms
+        if norm(r_new) < 1e-8 * init_rms
             break
         end
         if precond == true
-            z_new = mg_solver(mg_struct, r_new, n_level=n_level, maximum_iterations=maximum_iterations, nx=nx, ny=ny, iter_algo_num=iter_algo_num)
+            z_new = mg_solver(mg_struct, r_new, n_level=n_level, v1=v1,v2=v2,v3=v3, maximum_iterations=maximum_iterations, nx=nx, ny=ny, iter_algo_num=iter_algo_num)
         else
             z_new = copy(r_new)
         end
@@ -269,7 +269,11 @@ end
 
 function test_mgcg()
     # u0 = randn(nx+1,ny+1)
-    mgcg(mg_struct,nx=128,ny=128,maxiter=10,iter_algo_num=2)
+    mgcg(mg_struct,nx=128,ny=128,maxiter=100,iter_algo_num=2)
+    mgcg(mg_struct,nx=512,ny=512,n_level=8,iter_algo_num=1,maxiter=1000,precond=false)
+    mgcg(mg_struct,nx=512,ny=512,n_level=8,v1=4,v2=4,v3=10,iter_algo_num=1,maxiter=1000,precond=true)
+    mgcg(mg_struct,nx=512,ny=512,n_level=8,v1=4,v2=4,v3=10,ω=1.6,iter_algo_num=2,maxiter=1000,precond=true)
+    mgcg(mg_struct,nx=512,ny=512,n_level=8,v1=4,v2=4,v3=10,ω=1.6,iter_algo_num=2,maxiter=1000,precond=true)
 end
 
 function initial_global_params()
