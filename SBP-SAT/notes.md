@@ -15,3 +15,9 @@ The bad performance of MG for the SBP-SAT method is very likely coming from the 
 Notes from April 7
 
 Arpack package provides eigvals solver for sparse format eigs
+
+
+Notes from April 15
+
+We need to use Galerkin condition to form the coarse grid operators in order to have MG converges. However, this will make the matrix-free code more challenging to write.
+Alex

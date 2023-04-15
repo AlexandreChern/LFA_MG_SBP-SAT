@@ -49,14 +49,14 @@ function initialize_mg_struct(mg_struct,nx,ny,n_level;use_galerkin=false,use_sbp
             nx,ny = nx,ny
             hx,hy = 1/nx, 1/ny
             if k == 1
-                A_DDDD, b_DDDD = poisson_sbp_sat_matrix(nx,ny,hx,hy)
+                A_DDDD, b_DDDD = poisson_sbp_sat_matrix(nx,ny,1/nx,1/ny)
                 push!(A_mg,A_DDDD)
                 push!(f_mg,reshape(b_DDDD,nx+1,ny+1))
             else
                 if use_galerkin
                     A_DDDD = rest_mg[k-1] * A_mg[k-1] * prol_mg[k-1]
                 else
-                    A_DDDD, b_DDDD = poisson_sbp_sat_matrix(nx,ny,hx,hy)
+                    A_DDDD, b_DDDD = poisson_sbp_sat_matrix(nx,ny,1/nx,1/ny)
                 end
                 push!(A_mg,A_DDDD)
                 push!(f_mg, spzeros(nx+1,ny+1))
@@ -69,7 +69,8 @@ function initialize_mg_struct(mg_struct,nx,ny,n_level;use_galerkin=false,use_sbp
             push!(r_mg, spzeros(nx+1,ny+1))
             if use_sbp
                 push!(rest_mg, restriction_matrix_v2(nx,ny,div(nx,2),div(ny,2)))
-                push!(prol_mg, prolongation_matrix_v2(nx,ny,div(nx,2),div(ny,2)))
+                # push!(prol_mg, prolongation_matrix_v2(nx,ny,div(nx,2),div(ny,2)))
+                push!(prol_mg, 4*restriction_matrix_v2(nx,ny,div(nx,2),div(ny,2))')
             else
                 push!(rest_mg, restriction_matrix_v1(nx,ny,div(nx,2),div(ny,2)))
                 push!(prol_mg, prolongation_matrix_v1(nx,ny,div(nx,2),div(ny,2)))
@@ -83,8 +84,8 @@ function initialize_mg_struct(mg_struct,nx,ny,n_level;use_galerkin=false,use_sbp
     println("Ending resembling matrices")
 end
 
-function mg_solver(mg_struct, f_in ;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=1,interp="normal",ω=1,maximum_iterations=120,use_galerkin=false)
-    initialize_mg_struct(mg_struct,nx,ny,n_level,use_galerkin=use_galerkin)
+function mg_solver(mg_struct, f_in ;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=1,interp="normal",ω=1,maximum_iterations=10,use_galerkin=false,use_sbp=true)
+    initialize_mg_struct(mg_struct,nx,ny,n_level,use_galerkin=use_galerkin,use_sbp=use_sbp)
     # mg_struct.u_mg[1][:] .= u_in
     mg_struct.f_mg[1][:] .= copy(f_in)[:]
     mg_struct.u_mg[1][:] .= spzeros(nx+1,ny+1)[:]
@@ -226,7 +227,7 @@ function mg_solver(mg_struct, f_in ;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,toleran
             end
         end
         mg_struct.r_mg[1][:] .= mg_struct.f_mg[1][:] .- mg_struct.A_mg[1] * mg_struct.u_mg[1][:]
-
+        # mg_struct.f_mg[1][:] .= copy(f_in)[:]
         # if iteration_count % 5 == 0
         #     contourf(xs,ys,r,levels=20,color=:turbo)
         #     savefig("figures/$(iteration_count)_res.png")
@@ -235,7 +236,10 @@ function mg_solver(mg_struct, f_in ;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,toleran
         # end
 
         rms = compute_l2norm(mg_struct.lnx_mg[1],mg_struct.lny_mg[1],mg_struct.r_mg[1])
+        error = norm(mg_struct.u_mg[1] - u_exact)
         println("$(iteration_count)", " ", rms, " ", rms/init_rms)
+        println("$(iteration_count)", " error ", error, " log(error) ", log(error))
+
     end
     return mg_struct.u_mg[1]
 end
@@ -286,6 +290,7 @@ function test_mgcg()
     mgcg(mg_struct,nx=512,ny=512,n_level=8,v1=4,v2=4,v3=10,iter_algo_num=1,maxiter=1000,precond=true)
     mgcg(mg_struct,nx=512,ny=512,n_level=8,v1=4,v2=4,v3=10,ω=1.6,iter_algo_num=2,maxiter=1000,precond=true)
     mgcg(mg_struct,nx=512,ny=512,n_level=8,v1=4,v2=4,v3=10,ω=1.6,iter_algo_num=2,maxiter=1000,precond=true)
+    mg_solver(mg_struct, b_64, nx=64,ny=64,n_level=6,v1=10,v3=10,v2=10,iter_algo_num=1,use_galerkin=true,maximum_iterations=40,use_sbp=true) # this works well
 end
 
 function initial_global_params()
@@ -300,4 +305,16 @@ function initial_global_params()
     interp="sbp"
     ω=1
     maximum_iterations=120
+end
+
+
+let
+    _, b_8 = poisson_sbp_sat_matrix(8,8,1/8,1/8) 
+    _, b_16 = poisson_sbp_sat_matrix(16,16,1/16,1/16) 
+    _, b_32 = poisson_sbp_sat_matrix(32,32,1/32,1/32) 
+    _, b_64 = poisson_sbp_sat_matrix(64,64,1/64,1/64) 
+    _, b_128 = poisson_sbp_sat_matrix(128,128,1/128,1/128) 
+    _, b_256 = poisson_sbp_sat_matrix(256,256,1/256,1/256) 
+    _, b_512 = poisson_sbp_sat_matrix(512,512,1/512,1/512)
+    _, b_1024 = poisson_sbp_sat_matrix(1024,1024,1/1024,1/1024)  
 end
