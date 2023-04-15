@@ -237,12 +237,13 @@ function mg_solver(mg_struct, f_in ;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,toleran
 
         rms = compute_l2norm(mg_struct.lnx_mg[1],mg_struct.lny_mg[1],mg_struct.r_mg[1])
         error = norm(mg_struct.u_mg[1] - u_exact)
-        println("$(iteration_count)", " ", rms, " ", rms/init_rms)
+        println("$(iteration_count)", " rms ", rms, " rms/init_rms ", rms/init_rms, " log(rms) ", log(rms))
         println("$(iteration_count)", " error ", error, " log(error) ", log(error))
 
     end
     return mg_struct.u_mg[1]
 end
+
 
 
 function mgcg(mg_struct;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,ω=1.8, maxiter=100,iter_algo_num=2,maximum_iterations=2,precond=true)
