@@ -1,6 +1,52 @@
 using SparseArrays
 using LinearAlgebra
 
+
+
+
+"""
+    restriction_matrix_v0(nxf,nyf,nxc,nyc)
+    Generating SBP-preserving restriction matrix from fine grid (nxf,nyf) to coarse grid (nxc, nyc)
+    The matrix size generated is ((nxc+1) * (nyc+1) by (nxf+1) * (nyf+1))
+    
+    # Examples
+    ```julia
+    julia> restriction_matrix(4,4,2,2)
+    9×25 SparseMatrixCSC{Float64, Int64} with 25 stored entries:
+    ⠑⠒⢄⠀⠀⡀⠀⢀⠀⠀⠀⠀⠀
+    ⠀⠀⠀⠉⠑⠈⠉⠂⠉⠑⢄⣀⠀
+    ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠁
+    ```
+"""
+function restriction_matrix_v0(nxf,nyf,nxc,nyc)
+    restriction_matrix_x = spzeros(nxc+1, nxf+1)
+    restriction_matrix_x[1,1] = 1/4
+    restriction_matrix_x[1,2] = 1/2
+    for i in 2:nxc
+        restriction_matrix_x[i,2*i-1] = 1/2
+        restriction_matrix_x[i,2*i-2] = 1/4
+        restriction_matrix_x[i,2*i] = 1/4
+    end
+    restriction_matrix_x[end,end] = 1/2
+    restriction_matrix_x[end,end-1] = 1/2
+
+    restriction_matrix_y = spzeros(nyc+1, nyf+1)
+    restriction_matrix_y[1,1] = 1/2
+    restriction_matrix_y[1,2] = 1/2
+    for i in 2:nyc
+        restriction_matrix_y[i,2*i-1] = 1/2
+        restriction_matrix_y[i,2*i-2] = 1/4
+        restriction_matrix_y[i,2*i] = 1/4
+    end
+    restriction_matrix_y[end,end] = 1/2
+    restriction_matrix_y[end,end-1] = 1/4
+
+    restriction_matrix_ = kron(restriction_matrix_x,restriction_matrix_y)
+    return restriction_matrix_
+end
+
+
+
 """
     prolongation_matrix_v2(nxf,nyf,nxc,nyc)
     Generating SBP-preserving restriction matrix from coarse grid (nxc, nyc) to fine grid (nxf,nyf)

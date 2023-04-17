@@ -69,11 +69,13 @@ function initialize_mg_struct(mg_struct,nx,ny,n_level;use_galerkin=false,use_sbp
             push!(r_mg, spzeros(nx+1,ny+1))
             if use_sbp
                 push!(rest_mg, restriction_matrix_v2(nx,ny,div(nx,2),div(ny,2)))
-                # push!(prol_mg, prolongation_matrix_v2(nx,ny,div(nx,2),div(ny,2)))
-                push!(prol_mg, 4*restriction_matrix_v2(nx,ny,div(nx,2),div(ny,2))')
+                push!(prol_mg, prolongation_matrix_v2(nx,ny,div(nx,2),div(ny,2)))
+                # push!(prol_mg, 4*restriction_matrix_v2(nx,ny,div(nx,2),div(ny,2))')
             else
-                push!(rest_mg, restriction_matrix_v1(nx,ny,div(nx,2),div(ny,2)))
-                push!(prol_mg, prolongation_matrix_v1(nx,ny,div(nx,2),div(ny,2)))
+                # push!(rest_mg, restriction_matrix_v1(nx,ny,div(nx,2),div(ny,2)))
+                # push!(prol_mg, prolongation_matrix_v1(nx,ny,div(nx,2),div(ny,2)))
+                push!(rest_mg, restriction_matrix_v0(nx,ny,div(nx,2),div(ny,2)))
+                push!(prol_mg, 4*restriction_matrix_v0(nx,ny,div(nx,2),div(ny,2))')
             end
             push!(lnx_mg,nx)
             push!(lny_mg,ny)
