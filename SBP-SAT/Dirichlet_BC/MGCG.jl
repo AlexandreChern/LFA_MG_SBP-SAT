@@ -45,6 +45,7 @@ function initialize_mg_struct(mg_struct,nx,ny,n_level;use_galerkin=false,use_sbp
     lny_mg = mg_struct.lny_mg
     if isempty(A_mg) 
         # Assembling matrices
+        println("mg_struct is empty now, assembling matrices")
         for k in 1:n_level
             nx,ny = nx,ny
             hx,hy = 1/nx, 1/ny
@@ -74,8 +75,10 @@ function initialize_mg_struct(mg_struct,nx,ny,n_level;use_galerkin=false,use_sbp
             else
                 # push!(rest_mg, restriction_matrix_v1(nx,ny,div(nx,2),div(ny,2)))
                 # push!(prol_mg, prolongation_matrix_v1(nx,ny,div(nx,2),div(ny,2)))
+
                 push!(rest_mg, restriction_matrix_v0(nx,ny,div(nx,2),div(ny,2)))
-                push!(prol_mg, 4*restriction_matrix_v0(nx,ny,div(nx,2),div(ny,2))')
+                # push!(prol_mg, 4*restriction_matrix_v0(nx,ny,div(nx,2),div(ny,2))')
+                push!(prol_mg, prolongation_matrix_v0(nx,ny,div(nx,2),div(ny,2)))
             end
             push!(lnx_mg,nx)
             push!(lny_mg,ny)
@@ -179,12 +182,15 @@ function mg_solver(mg_struct, f_in ;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,toleran
             elseif k == n_level
                 for i in 1:v2
                     if iter_algo == "gauss_seidel"
-                        # u_mg[k] .= reshape(L_mg[k]\(f_mg[k][:] .- U_mg[k]*u_mg[k][:]),lnx[k]+1,lny[k]+1) # gauss seidel
-                        mg_struct.u_mg[k][:] .= mg_struct.L_mg[k] \ (mg_struct.f_mg[k][:] .- mg_struct.U_mg[k] * mg_struct.u_mg[k][:])
+                        # u_mg[k] .= reshape(L_mg[k]\(f_mg[k][:] .- U_mg[k]*u_mg[k][:]),lnx[k]+1,lny[k]+1) # gauss seidel old formulation
+                        mg_struct.u_mg[k][:] .= mg_struct.L_mg[k] \ (mg_struct.f_mg[k][:] .- mg_struct.U_mg[k] * mg_struct.u_mg[k][:]) # gaus seidel 
+                        # mg_struct.u_mg[k][:] .= mg_struct.A_mg[k] \ Vector(mg_struct.f_mg[k][:])
+
                     elseif iter_algo == "SOR"
-                        # u_mg[k][:] = (1-ω) * u_mg[k][:] .+ ω * L_mg[k] \ (f_mg[k][:] .- U_mg[k]*u_mg[k][:]) # SOR
-                        mg_struct.u_mg[k][:] .= sor!(mg_struct.u_mg[k][:],mg_struct.A_mg[k],mg_struct.f_mg[k][:],ω;maxiter=1)
+                        u_mg[k][:] = (1-ω) * u_mg[k][:] .+ ω * L_mg[k] \ (f_mg[k][:] .- U_mg[k]*u_mg[k][:]) # SOR
+                        # mg_struct.u_mg[k][:] .= sor!(mg_struct.u_mg[k][:],mg_struct.A_mg[k],mg_struct.f_mg[k][:],ω;maxiter=1)
                         # mg_struct.u_mg[k][:] .= cg!(mg_struct.u_mg[k][:],mg_struct.A_mg[k],mg_struct.f_mg[k][:]) # solve using CG
+                        # mg_struct.u_mg[k][:] .= mg_struct.A_mg[k] \ Vector(mg_struct.f_mg[k][:])
                     elseif iter_algo == "jacobi"
                         mg_struct.u_mg[k][:] .= ω * jacobi!(mg_struct.u_mg[k][:],mg_struct.A_mg[k],mg_struct.f_mg[k][:],maxiter=1) .+ (1-ω) * mg_struct.u_mg[k][:]
                     elseif iter_algo == "chebyshev"
@@ -239,12 +245,13 @@ function mg_solver(mg_struct, f_in ;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,toleran
 
         rms = compute_l2norm(mg_struct.lnx_mg[1],mg_struct.lny_mg[1],mg_struct.r_mg[1])
         error = norm(mg_struct.u_mg[1] - u_exact)
-        println("$(iteration_count)", " rms ", rms, " rms/init_rms ", rms/init_rms, " log(rms) ", log(rms))
-        println("$(iteration_count)", " error ", error, " log(error) ", log(error))
+        println("$(iteration_count)\t", " rms ", rms, " rms/init_rms ", rms/init_rms, " log(rms) ", log(rms))
+        println("\t", " error ", error, " log(error) ", log(error))
 
     end
     return mg_struct.u_mg[1]
 end
+
 
 
 
