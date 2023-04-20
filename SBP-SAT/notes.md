@@ -21,3 +21,9 @@ Notes from April 15
 
 We need to use Galerkin condition to form the coarse grid operators in order to have MG converges. However, this will make the matrix-free code more challenging to write.
 Alex
+
+
+Notes from April 20
+
+1. Test difference between using Galerkin conditions and not using Galerkin conditions
+2. Test Operator-dependent interpolations to see if we can get improvements in convergence rate for GMG
