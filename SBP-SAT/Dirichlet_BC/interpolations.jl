@@ -355,7 +355,7 @@ function restriction_matrix_v1(nxf,nyf,nxc,nyc)
 end
 
 
-function operator_dependent_interpolation(input_A)
+function operator_dependent_restriction(input_A)
     nx =  ny = Int(sqrt(size(input_A,1)))
     indices = ((Vector(1:2:nx) .- 1) * nx .+ Vector(1:2:ny)')'[:]
     tmp = input_A[indices,:]

@@ -82,8 +82,8 @@ function initialize_mg_struct(mg_struct,nx,ny,n_level;use_galerkin=false,use_sbp
                 # push!(prol_mg, prolongation_matrix_v0(nx,ny,div(nx,2),div(ny,2)))
 
                 # testing new operator dependent interpolations
-                push!(rest_mg, operator_dependent_interpolation(A_DDDD))
-                push!(prol_mg, operator_dependent_interpolation(A_DDDD)')
+                push!(rest_mg, operator_dependent_restriction(A_DDDD))
+                push!(prol_mg, operator_dependent_restriction(A_DDDD)')
             end
             push!(lnx_mg,nx)
             push!(lny_mg,ny)
