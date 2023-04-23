@@ -27,3 +27,9 @@ Notes from April 20
 
 1. Test difference between using Galerkin conditions and not using Galerkin conditions
 2. Test Operator-dependent interpolations to see if we can get improvements in convergence rate for GMG
+
+
+Notes from April 22
+
+1. Using operator-dependnt interpolations do help with the convergence for 1 MG iteration
+2. The performace is not ideal after more iterations. Need to form prolongation operators better

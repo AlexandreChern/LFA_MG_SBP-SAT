@@ -76,9 +76,14 @@ function initialize_mg_struct(mg_struct,nx,ny,n_level;use_galerkin=false,use_sbp
                 # push!(rest_mg, restriction_matrix_v1(nx,ny,div(nx,2),div(ny,2)))
                 # push!(prol_mg, prolongation_matrix_v1(nx,ny,div(nx,2),div(ny,2)))
 
-                push!(rest_mg, restriction_matrix_v0(nx,ny,div(nx,2),div(ny,2)))
-                # push!(prol_mg, 4*restriction_matrix_v0(nx,ny,div(nx,2),div(ny,2))')
-                push!(prol_mg, prolongation_matrix_v0(nx,ny,div(nx,2),div(ny,2)))
+                # Testing new formulations
+                # push!(rest_mg, restriction_matrix_v0(nx,ny,div(nx,2),div(ny,2)))
+                # # push!(prol_mg, 4*restriction_matrix_v0(nx,ny,div(nx,2),div(ny,2))')
+                # push!(prol_mg, prolongation_matrix_v0(nx,ny,div(nx,2),div(ny,2)))
+
+                # testing new operator dependent interpolations
+                push!(rest_mg, operator_dependent_interpolation(A_DDDD))
+                push!(prol_mg, operator_dependent_interpolation(A_DDDD)')
             end
             push!(lnx_mg,nx)
             push!(lny_mg,ny)
@@ -187,8 +192,8 @@ function mg_solver(mg_struct, f_in ;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,toleran
                         # mg_struct.u_mg[k][:] .= mg_struct.A_mg[k] \ Vector(mg_struct.f_mg[k][:])
 
                     elseif iter_algo == "SOR"
-                        u_mg[k][:] = (1-ω) * u_mg[k][:] .+ ω * L_mg[k] \ (f_mg[k][:] .- U_mg[k]*u_mg[k][:]) # SOR
-                        # mg_struct.u_mg[k][:] .= sor!(mg_struct.u_mg[k][:],mg_struct.A_mg[k],mg_struct.f_mg[k][:],ω;maxiter=1)
+                        # u_mg[k][:] = (1-ω) * u_mg[k][:] .+ ω * L_mg[k] \ (f_mg[k][:] .- U_mg[k]*u_mg[k][:]) # SOR
+                        mg_struct.u_mg[k][:] .= sor!(mg_struct.u_mg[k][:],mg_struct.A_mg[k],mg_struct.f_mg[k][:],ω;maxiter=1)
                         # mg_struct.u_mg[k][:] .= cg!(mg_struct.u_mg[k][:],mg_struct.A_mg[k],mg_struct.f_mg[k][:]) # solve using CG
                         # mg_struct.u_mg[k][:] .= mg_struct.A_mg[k] \ Vector(mg_struct.f_mg[k][:])
                     elseif iter_algo == "jacobi"
@@ -301,6 +306,14 @@ function test_mgcg()
     mgcg(mg_struct,nx=512,ny=512,n_level=8,v1=4,v2=4,v3=10,ω=1.6,iter_algo_num=2,maxiter=1000,precond=true)
     mgcg(mg_struct,nx=512,ny=512,n_level=8,v1=4,v2=4,v3=10,ω=1.6,iter_algo_num=2,maxiter=1000,precond=true)
     mg_solver(mg_struct, b_64, nx=64,ny=64,n_level=6,v1=10,v3=10,v2=10,iter_algo_num=1,use_galerkin=true,maximum_iterations=40,use_sbp=true) # this works well
+
+    # Testing interpolations
+    mg_solver(mg_struct, b_16, nx=16,ny=16,n_level=3,v1=10,v3=10,v2=10,iter_algo_num=1,use_galerkin=false,maximum_iterations=1,use_sbp=true) # this works well
+    mg_struct_2 = MG([],[],[],[],[],[],[],[],[],[])
+
+    # Testing operator dependent interpolationa
+    mg_solver(mg_struct_2, b_16, nx=16,ny=16,n_level=3,v1=10,v3=10,v2=10,iter_algo_num=1,use_galerkin=false,maximum_iterations=8,use_sbp=false)
+    mg_solver(mg_struct_2, b_128, nx=128,ny=128,n_level=5,v1=10,v3=10,v2=10,iter_algo_num=1,use_galerkin=false,maximum_iterations=8,use_sbp=false)
 end
 
 function initial_global_params()

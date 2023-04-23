@@ -353,3 +353,20 @@ function restriction_matrix_v1(nxf,nyf,nxc,nyc)
     end
     return restriction_matrix_
 end
+
+
+function operator_dependent_interpolation(input_A)
+    nx =  ny = Int(sqrt(size(input_A,1)))
+    indices = ((Vector(1:2:nx) .- 1) * nx .+ Vector(1:2:ny)')'[:]
+    tmp = input_A[indices,:]
+    row = Int(1)
+    for idx in indices
+        tmp[row,:] ./= -tmp[row,idx]
+        tmp[row,idx] = 0
+        row += Int(1)
+    end
+    return tmp
+end
+
+# indices = ((Vector(1:2:9) .- 1) * 9 .+ Vector(1:2:9)')'[:]
+# mg_struct.A_mg[2][indices,:]
