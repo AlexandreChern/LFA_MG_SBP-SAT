@@ -12,9 +12,10 @@ mutable struct MG
     prol_mg
     lnx_mg
     lny_mg
+    u_exact
 end
 
-mg_struct = MG([],[],[],[],[],[],[],[],[],[])
+mg_struct = MG([],[],[],[],[],[],[],[],[],[],[])
 
 function clear_mg_struct(mg_struct)
     mg_struct.A_mg = []
@@ -27,6 +28,7 @@ function clear_mg_struct(mg_struct)
     mg_struct.prol_mg = []
     mg_struct.lnx_mg = []
     mg_struct.lny_mg = []
+    mg_struct.u_exact = []
 end
 
 function initialize_mg_struct(mg_struct,nx,ny,n_level;use_galerkin=false,use_sbp=true)
@@ -117,6 +119,7 @@ function mg_solver(mg_struct, f_in ;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,toleran
     xs = 0:dx:1
     ys = 0:dy:1
     u_exact = (xs.^2 .- 1) .* (ys'.^2 .- 1)
+    push!(mg_struct.u_exact, u_exact)
 
     # compute initial L-2 norm
     rms = compute_l2norm(nx,ny,mg_struct.r_mg[1])
@@ -316,11 +319,12 @@ function test_mgcg()
 
     # Testing interpolations
     mg_solver(mg_struct, b_16, nx=16,ny=16,n_level=3,v1=10,v3=10,v2=10,iter_algo_num=1,use_galerkin=false,maximum_iterations=1,use_sbp=true) # this works well
-    mg_struct_2 = MG([],[],[],[],[],[],[],[],[],[])
+    mg_struct_2 = MG([],[],[],[],[],[],[],[],[],[],[])
 
     # Testing operator dependent interpolationa
     mg_solver(mg_struct_2, b_16, nx=16,ny=16,n_level=3,v1=10,v3=10,v2=10,iter_algo_num=1,use_galerkin=false,maximum_iterations=8,use_sbp=false)
     mg_solver(mg_struct_2, b_128, nx=128,ny=128,n_level=5,v1=10,v3=10,v2=10,iter_algo_num=1,use_galerkin=false,maximum_iterations=8,use_sbp=false)
+    mg_solver(mg_struct_2, b_512, nx=512,ny=512,n_level=8,v1=10,v3=10,v2=10,iter_algo_num=1,use_galerkin=false,maximum_iterations=8,use_sbp=false)
 end
 
 function initial_global_params()
@@ -347,4 +351,13 @@ let
     _, b_256 = poisson_sbp_sat_matrix(256,256,1/256,1/256) 
     _, b_512 = poisson_sbp_sat_matrix(512,512,1/512,1/512)
     _, b_1024 = poisson_sbp_sat_matrix(1024,1024,1/1024,1/1024)  
+end
+
+
+
+function surface_plot(A)
+    Nx,Ny = size(A)
+    xs = 0:1/(Nx-1):1
+    ys = 0:1/(Ny-1):1
+    plot(xs,ys,A,st=:surface)
 end
