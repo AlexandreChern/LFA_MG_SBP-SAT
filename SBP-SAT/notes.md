@@ -33,3 +33,10 @@ Notes from April 22
 
 1. Using operator-dependnt interpolations do help with the convergence for 1 MG iteration
 2. The performace is not ideal after more iterations. Need to form prolongation operators better
+
+
+Notes from April 24
+
+1. A_mg formed with Galerkin conditions look like centered finite difference operators
+
+2. Try to form this directly without using Galerkin conditions
