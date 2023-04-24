@@ -50,14 +50,21 @@ function initialize_mg_struct(mg_struct,nx,ny,n_level;use_galerkin=false,use_sbp
             nx,ny = nx,ny
             hx,hy = 1/nx, 1/ny
             if k == 1
-                A_DDDD, b_DDDD = poisson_sbp_sat_matrix(nx,ny,1/nx,1/ny)
+                A_DDDD, b_DDDD, _ = poisson_sbp_sat_matrix(nx,ny,1/nx,1/ny)
                 push!(A_mg,A_DDDD)
                 push!(f_mg,reshape(b_DDDD,nx+1,ny+1))
             else
                 if use_galerkin
                     A_DDDD = rest_mg[k-1] * A_mg[k-1] * prol_mg[k-1]
                 else
-                    A_DDDD, b_DDDD = poisson_sbp_sat_matrix(nx,ny,1/nx,1/ny)
+                    A_DDDD, b_DDDD, _ = poisson_sbp_sat_matrix(nx,ny,1/nx,1/ny)
+                    # _, b_DDDD, A_DDDD = poisson_sbp_sat_matrix(nx,ny,1/nx,1/ny)
+                    # A_DDDD = poisson_matrix(nx,ny,1/nx,1/ny)
+
+                    # if k >= 2
+                    #     # _, b_DDDD, A_DDDD = poisson_sbp_sat_matrix(nx,ny,1/nx,1/ny)
+                    #     A_DDDD = poisson_matrix(nx,ny,1/nx,1/ny)
+                    # end
                 end
                 push!(A_mg,A_DDDD)
                 push!(f_mg, spzeros(nx+1,ny+1))
@@ -77,13 +84,13 @@ function initialize_mg_struct(mg_struct,nx,ny,n_level;use_galerkin=false,use_sbp
                 # push!(prol_mg, prolongation_matrix_v1(nx,ny,div(nx,2),div(ny,2)))
 
                 # Testing new formulations
-                # push!(rest_mg, restriction_matrix_v0(nx,ny,div(nx,2),div(ny,2)))
-                # # push!(prol_mg, 4*restriction_matrix_v0(nx,ny,div(nx,2),div(ny,2))')
-                # push!(prol_mg, prolongation_matrix_v0(nx,ny,div(nx,2),div(ny,2)))
+                push!(rest_mg, restriction_matrix_v0(nx,ny,div(nx,2),div(ny,2)))
+                # push!(prol_mg, 4*restriction_matrix_v0(nx,ny,div(nx,2),div(ny,2))')
+                push!(prol_mg, prolongation_matrix_v0(nx,ny,div(nx,2),div(ny,2)))
 
-                # testing new operator dependent interpolations
-                push!(rest_mg, operator_dependent_restriction(A_DDDD))
-                push!(prol_mg, operator_dependent_restriction(A_DDDD)')
+                ## Testing new operator dependent interpolations
+                # push!(rest_mg, operator_dependent_restriction(A_DDDD))
+                # push!(prol_mg, operator_dependent_restriction(A_DDDD)')
             end
             push!(lnx_mg,nx)
             push!(lny_mg,ny)

@@ -197,9 +197,46 @@ function poisson_sbp_sat_matrix(nx,ny,dx,dy)
     A_DDDD = H_tilde*A;
     b_DDDD = H_tilde*b;
 
-    return A_DDDD, b_DDDD
+    return A_DDDD, b_DDDD, H_tilde * (-D2)
 end
 
+
+function poisson_matrix(nx,ny,dx,dy)
+    Dx = 1 / dx^2
+    Dy = 1 / dy^2
+
+    Dxx_matrix_ = spzeros(nx+1,nx+1)
+    # Dxx_matrix_[1,1] = -2
+    Dxx_matrix_[end,end] = -2 * Dx
+    for i in 1:nx
+        Dxx_matrix_[i,i] = -2 * Dx
+        Dxx_matrix_[i,i+1] = 1 * Dx
+        Dxx_matrix_[i+1,i] = 1 * Dx
+    end
+
+    Dyy_matrix_ = spzeros(ny+1,ny+1)
+    # Dxx_matrix_[1,1] = -2
+    Dyy_matrix_[end,end] = -2 * Dy
+    for i in 1:nx
+        Dyy_matrix_[i,i] = -2 * Dy
+        Dyy_matrix_[i,i+1] = 1 * Dy
+        Dyy_matrix_[i+1,i] = 1 * Dy
+    end
+    I_Ny = sparse(I,ny+1,ny+1)
+    I_Nx = sparse(I,nx+1,nx+1)
+    poisson_matrix_ = kron(I_Nx,Dyy_matrix_) + kron(Dxx_matrix_,I_Ny)
+    index_count = 0
+    for j in 1:ny+ 1 for i in 1:nx + 1
+        index = (j - 1) * (nx+1) + i
+        if (i == 1 || i == nx + 1 || j == 1 || j == ny + 1)
+            poisson_matrix_[index,:] .= 0
+            poisson_matrix_[index,index] = 1
+            index_count += 1
+        end
+    end end
+    # @show index_count
+    return poisson_matrix_
+end
 
 function isdiagonallydominal(A)
     all(sum(abs.(A),dims=2) .<= 2*abs.(diag(A)))
