@@ -323,8 +323,8 @@ function test_mgcg()
 
     # Testing operator dependent interpolationa
     mg_solver(mg_struct_2, b_16, nx=16,ny=16,n_level=3,v1=10,v3=10,v2=10,iter_algo_num=1,use_galerkin=false,maximum_iterations=8,use_sbp=false)
-    mg_solver(mg_struct_2, b_128, nx=128,ny=128,n_level=5,v1=10,v3=10,v2=10,iter_algo_num=1,use_galerkin=false,maximum_iterations=8,use_sbp=false)
-    mg_solver(mg_struct_2, b_512, nx=512,ny=512,n_level=8,v1=10,v3=10,v2=10,iter_algo_num=1,use_galerkin=false,maximum_iterations=8,use_sbp=false)
+    mg_solver(mg_struct_2, b_128, nx=128,ny=128,n_level=7,v1=10,v3=10,v2=10,iter_algo_num=1,use_galerkin=false,maximum_iterations=12,use_sbp=true)
+    mg_solver(mg_struct_2, b_512, nx=512,ny=512,n_level=9,v1=10,v3=10,v2=10,iter_algo_num=1,use_galerkin=true,maximum_iterations=20,use_sbp=true)
 end
 
 function initial_global_params()
@@ -343,14 +343,14 @@ end
 
 
 let
-    _, b_8 = poisson_sbp_sat_matrix(8,8,1/8,1/8) 
-    _, b_16 = poisson_sbp_sat_matrix(16,16,1/16,1/16) 
-    _, b_32 = poisson_sbp_sat_matrix(32,32,1/32,1/32) 
-    _, b_64 = poisson_sbp_sat_matrix(64,64,1/64,1/64) 
-    _, b_128 = poisson_sbp_sat_matrix(128,128,1/128,1/128) 
-    _, b_256 = poisson_sbp_sat_matrix(256,256,1/256,1/256) 
-    _, b_512 = poisson_sbp_sat_matrix(512,512,1/512,1/512)
-    _, b_1024 = poisson_sbp_sat_matrix(1024,1024,1/1024,1/1024)  
+    A_8, b_8 = poisson_sbp_sat_matrix(8,8,1/8,1/8) 
+    A_16, b_16 = poisson_sbp_sat_matrix(16,16,1/16,1/16) 
+    A_32, b_32 = poisson_sbp_sat_matrix(32,32,1/32,1/32) 
+    A_64, b_64 = poisson_sbp_sat_matrix(64,64,1/64,1/64) 
+    A_128, b_128 = poisson_sbp_sat_matrix(128,128,1/128,1/128) 
+    A_256, b_256 = poisson_sbp_sat_matrix(256,256,1/256,1/256) 
+    A_512, b_512 = poisson_sbp_sat_matrix(512,512,1/512,1/512)
+    A_1024, b_1024 = poisson_sbp_sat_matrix(1024,1024,1/1024,1/1024)  
 end
 
 
@@ -360,4 +360,8 @@ function surface_plot(A)
     xs = 0:1/(Nx-1):1
     ys = 0:1/(Ny-1):1
     plot(xs,ys,A,st=:surface)
+end
+
+function test_surface_plot()
+    surface_plot(mg_struct_2.u_mg[1])
 end

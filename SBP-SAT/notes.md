@@ -40,3 +40,10 @@ Notes from April 24
 1. A_mg formed with Galerkin conditions look like centered finite difference operators
 
 2. Try to form this directly without using Galerkin conditions
+
+
+Notes from April 25
+
+1. Find the issue with Geometric Multigrid
+2. The H_tilde matrix is different on different grids. To solve the problem directly, it's okay. But for multigrid, it causes different coefficients on the LHS and RHS of the equation. The right-hand side is interpolated, so the H_tilde is associated with the finiest grid. The left-hand-side is formed directly, so the H_tilde will get larger and larger on the left hand side.
+3. This is why Algebraic multigrid was working. Because the LHS operator is obtained through interpolation, so the H_tilde does not grow with coarse grid refinements
