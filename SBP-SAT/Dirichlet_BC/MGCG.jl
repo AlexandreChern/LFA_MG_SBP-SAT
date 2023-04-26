@@ -325,6 +325,8 @@ function test_mgcg()
     mg_solver(mg_struct_2, b_16, nx=16,ny=16,n_level=3,v1=10,v3=10,v2=10,iter_algo_num=1,use_galerkin=false,maximum_iterations=8,use_sbp=false)
     mg_solver(mg_struct_2, b_128, nx=128,ny=128,n_level=7,v1=10,v3=10,v2=10,iter_algo_num=1,use_galerkin=false,maximum_iterations=12,use_sbp=true)
     mg_solver(mg_struct_2, b_512, nx=512,ny=512,n_level=9,v1=10,v3=10,v2=10,iter_algo_num=1,use_galerkin=true,maximum_iterations=20,use_sbp=true)
+    mg_solver(mg_struct_2, b_1024, nx=1024,ny=1024,n_level=10,v1=10,v3=10,v2=10,iter_algo_num=1,use_galerkin=false,maximum_iterations=20,use_sbp=true)
+
 end
 
 function initial_global_params()
@@ -364,4 +366,5 @@ end
 
 function test_surface_plot()
     surface_plot(mg_struct_2.u_mg[1])
+    surface_plot(mg_struct_2.u_mg[1] - mg_struct_2.u_exact[1])
 end
