@@ -60,12 +60,13 @@ function initialize_mg_struct(mg_struct,nx,ny,n_level;use_galerkin=false,use_sbp
                     A_DDDD = rest_mg[k-1] * A_mg[k-1] * prol_mg[k-1]
                 else
                     A_DDDD, b_DDDD, _ = poisson_sbp_sat_matrix(nx,ny,1/nx,1/ny)
-                    # _, b_DDDD, A_DDDD = poisson_sbp_sat_matrix(nx,ny,1/nx,1/ny)
+                    # A_DDDD ./= 4^(k-1) # if use H_tilde
                     # A_DDDD = poisson_matrix(nx,ny,1/nx,1/ny)
 
                     # if k >= 2
-                    #     # _, b_DDDD, A_DDDD = poisson_sbp_sat_matrix(nx,ny,1/nx,1/ny)
-                    #     A_DDDD = poisson_matrix(nx,ny,1/nx,1/ny)
+                    #     _, b_DDDD, A_DDDD = poisson_sbp_sat_matrix(nx,ny,1/nx,1/ny)
+                    #     # A_DDDD = poisson_matrix(nx,ny,1/nx,1/ny)
+                    #     A_DDDD ./= 2^(k-1)
                     # end
                 end
                 push!(A_mg,A_DDDD)
@@ -103,7 +104,7 @@ function initialize_mg_struct(mg_struct,nx,ny,n_level;use_galerkin=false,use_sbp
     println("Ending resembling matrices")
 end
 
-function mg_solver(mg_struct, f_in ;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=1,interp="normal",ω=1,maximum_iterations=10,use_galerkin=false,use_sbp=true)
+function mg_solver(mg_struct, f_in ;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=1,interp="normal",ω=1,maximum_iterations=10,use_galerkin=false,use_sbp=true,use_direct_sol=false)
     initialize_mg_struct(mg_struct,nx,ny,n_level,use_galerkin=use_galerkin,use_sbp=use_sbp)
     # mg_struct.u_mg[1][:] .= u_in
     mg_struct.f_mg[1][:] .= copy(f_in)[:]
@@ -125,7 +126,7 @@ function mg_solver(mg_struct, f_in ;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,toleran
     rms = compute_l2norm(nx,ny,mg_struct.r_mg[1])
     init_rms = rms
     mg_iter_count = 0
-    println("0", " ", rms, " ", rms/init_rms)
+    println("0\t", " rms ", rms, " rms/init_rms ", rms/init_rms)
     if nx < (2^n_level)
         println("Number of levels exceeds the possible number.")
     end
@@ -195,37 +196,50 @@ function mg_solver(mg_struct, f_in ;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,toleran
             # we can decide to do smoothing here as well
             # or use solvers such as CG
             elseif k == n_level
-                for i in 1:v2
-                    if iter_algo == "gauss_seidel"
-                        # u_mg[k] .= reshape(L_mg[k]\(f_mg[k][:] .- U_mg[k]*u_mg[k][:]),lnx[k]+1,lny[k]+1) # gauss seidel old formulation
-                        mg_struct.u_mg[k][:] .= mg_struct.L_mg[k] \ (mg_struct.f_mg[k][:] .- mg_struct.U_mg[k] * mg_struct.u_mg[k][:]) # gaus seidel 
-                        # mg_struct.u_mg[k][:] .= mg_struct.A_mg[k] \ Vector(mg_struct.f_mg[k][:])
+                if use_direct_sol == true
+                    mg_struct.u_mg[k][:] .= mg_struct.A_mg[k] \ Vector(mg_struct.f_mg[k][:]) # direct solve
+                    # println("Using direct sol on the coarsest grid")
+                    # @show norm(mg_struct.u_mg[k][:])
+                else
+                    for i in 1:v2
+                        if iter_algo == "gauss_seidel"
+                            # u_mg[k] .= reshape(L_mg[k]\(f_mg[k][:] .- U_mg[k]*u_mg[k][:]),lnx[k]+1,lny[k]+1) # gauss seidel old formulation
 
-                    elseif iter_algo == "SOR"
-                        # u_mg[k][:] = (1-ω) * u_mg[k][:] .+ ω * L_mg[k] \ (f_mg[k][:] .- U_mg[k]*u_mg[k][:]) # SOR
-                        mg_struct.u_mg[k][:] .= sor!(mg_struct.u_mg[k][:],mg_struct.A_mg[k],mg_struct.f_mg[k][:],ω;maxiter=1)
-                        # mg_struct.u_mg[k][:] .= cg!(mg_struct.u_mg[k][:],mg_struct.A_mg[k],mg_struct.f_mg[k][:]) # solve using CG
-                        # mg_struct.u_mg[k][:] .= mg_struct.A_mg[k] \ Vector(mg_struct.f_mg[k][:])
-                    elseif iter_algo == "jacobi"
-                        mg_struct.u_mg[k][:] .= ω * jacobi!(mg_struct.u_mg[k][:],mg_struct.A_mg[k],mg_struct.f_mg[k][:],maxiter=1) .+ (1-ω) * mg_struct.u_mg[k][:]
-                    elseif iter_algo == "chebyshev"
-                        mg_struct.u_mg[k][:] .= chebyshev!(mg_struct.u_mg[k][:],mg_struct.A_mg[k],mg_struct.f_mg[k][:],0,40,maxiter=1)
-                    elseif iter_algo == "richardson"
-                        mg_struct.u_mg[k][:] .= mg_struct.u_mg[k][:] .+ ω * (mg_struct.f_mg[k][:] .- mg_struct.A_mg[k]*mg_struct.u_mg[k][:])
+                            mg_struct.u_mg[k][:] .= mg_struct.L_mg[k] \ (mg_struct.f_mg[k][:] .- mg_struct.U_mg[k] * mg_struct.u_mg[k][:]) # gaus seidel 
+                            # @show norm(mg_struct.u_mg[k][:]) # comment out after debugging
+
+                            # mg_struct.u_mg[k][:] .= mg_struct.A_mg[k] \ Vector(mg_struct.f_mg[k][:]) # direct solve
+
+                        elseif iter_algo == "SOR"
+                            # u_mg[k][:] = (1-ω) * u_mg[k][:] .+ ω * L_mg[k] \ (f_mg[k][:] .- U_mg[k]*u_mg[k][:]) # SOR
+                            mg_struct.u_mg[k][:] .= sor!(mg_struct.u_mg[k][:],mg_struct.A_mg[k],mg_struct.f_mg[k][:],ω;maxiter=1)
+                            # mg_struct.u_mg[k][:] .= cg!(mg_struct.u_mg[k][:],mg_struct.A_mg[k],mg_struct.f_mg[k][:]) # solve using CG
+                            # mg_struct.u_mg[k][:] .= mg_struct.A_mg[k] \ Vector(mg_struct.f_mg[k][:])
+                        elseif iter_algo == "jacobi"
+                            mg_struct.u_mg[k][:] .= ω * jacobi!(mg_struct.u_mg[k][:],mg_struct.A_mg[k],mg_struct.f_mg[k][:],maxiter=1) .+ (1-ω) * mg_struct.u_mg[k][:]
+                        elseif iter_algo == "chebyshev"
+                            mg_struct.u_mg[k][:] .= chebyshev!(mg_struct.u_mg[k][:],mg_struct.A_mg[k],mg_struct.f_mg[k][:],0,40,maxiter=1)
+                        elseif iter_algo == "richardson"
+                            mg_struct.u_mg[k][:] .= mg_struct.u_mg[k][:] .+ ω * (mg_struct.f_mg[k][:] .- mg_struct.A_mg[k]*mg_struct.u_mg[k][:])
+                        end
                     end
                 end
             end
         end
 
         # ascending from the coarsest grid to the finiest grid
-        for k = n_level-1:-1:2
+        for k = n_level:-1:2
             # temporary matrix for correction storage at the (k-1)th level
             # solution prolongated from the kth level to the (k-1)th level
             prol_fine = zeros(Float64, mg_struct.lnx_mg[k-1]+1, mg_struct.lny_mg[k-1]+1)
 
             # prolongate solution from (k)th level to (k-1)th level
             # prol_fine[:] = prolongation_matrix(lnx[k-1],lny[k-1],lnx[k],lny[k]) * u_mg[k][:]
+            # @show k, size(mg_struct.u_mg[k]) # comment out after debugging
+
             prol_fine[:] = mg_struct.prol_mg[k-1] * mg_struct.u_mg[k][:]
+
+            # @show size(prol_fine), norm(prol_fine) # comment out after debugging
 
             # update u_mg
             for j = 1:mg_struct.lnx_mg[k-1]+1 for i in 1:mg_struct.lnx_mg[k-1]+1
@@ -311,6 +325,7 @@ end
 function test_mgcg()
     # u0 = randn(nx+1,ny+1)
     mgcg(mg_struct,nx=128,ny=128,maxiter=100,iter_algo_num=2)
+    mg_solver(mg_struct, b_128, nx=128,ny=128,n_level=7,v1=10,v3=10,v2=10,iter_algo_num=1,use_galerkin=true,maximum_iterations=10,use_sbp=true)
     mgcg(mg_struct,nx=512,ny=512,n_level=8,iter_algo_num=1,maxiter=1000,precond=false)
     mgcg(mg_struct,nx=512,ny=512,n_level=8,v1=4,v2=4,v3=10,iter_algo_num=1,maxiter=1000,precond=true)
     mgcg(mg_struct,nx=512,ny=512,n_level=8,v1=4,v2=4,v3=10,ω=1.6,iter_algo_num=2,maxiter=1000,precond=true)
@@ -323,9 +338,20 @@ function test_mgcg()
 
     # Testing operator dependent interpolationa
     mg_solver(mg_struct_2, b_16, nx=16,ny=16,n_level=3,v1=10,v3=10,v2=10,iter_algo_num=1,use_galerkin=false,maximum_iterations=8,use_sbp=false)
-    mg_solver(mg_struct_2, b_128, nx=128,ny=128,n_level=7,v1=10,v3=10,v2=10,iter_algo_num=1,use_galerkin=false,maximum_iterations=12,use_sbp=true)
+    mg_solver(mg_struct_2, b_128, nx=128,ny=128,n_level=7,v1=10,v3=10,v2=10,iter_algo_num=1,use_galerkin=false,maximum_iterations=10,use_sbp=true)
+    
+    
     mg_solver(mg_struct_2, b_512, nx=512,ny=512,n_level=9,v1=10,v3=10,v2=10,iter_algo_num=1,use_galerkin=true,maximum_iterations=20,use_sbp=true)
     mg_solver(mg_struct_2, b_1024, nx=1024,ny=1024,n_level=10,v1=10,v3=10,v2=10,iter_algo_num=1,use_galerkin=false,maximum_iterations=20,use_sbp=true)
+
+    mg_solver(mg_struct_2, b_1024, nx=1024,ny=1024,n_level=6,v1=10,v3=10,v2=10,iter_algo_num=1,use_galerkin=false,maximum_iterations=20,use_sbp=true,use_direct_sol=true)
+
+
+    # Testing 2 level MG
+    mg_solver(mg_struct_2, b_16, nx=16,ny=16,n_level=2,v1=5,v3=5,v2=5,iter_algo_num=1,use_galerkin=false,maximum_iterations=5,use_sbp=false,use_direct_sol=false)
+    mg_solver(mg_struct_2, b_16, nx=16,ny=16,n_level=2,v1=5,v3=5,v2=5,iter_algo_num=1,use_galerkin=false,maximum_iterations=5,use_sbp=false,use_direct_sol=true)
+
+    mg_solver(mg_struct_2, b_128, nx=128,ny=128,n_level=7,v1=5,v3=5,v2=5,iter_algo_num=3,use_galerkin=false,maximum_iterations=15,use_sbp=false,use_direct_sol=false)
 
 end
 
@@ -345,14 +371,14 @@ end
 
 
 let
-    A_8, b_8 = poisson_sbp_sat_matrix(8,8,1/8,1/8) 
-    A_16, b_16 = poisson_sbp_sat_matrix(16,16,1/16,1/16) 
-    A_32, b_32 = poisson_sbp_sat_matrix(32,32,1/32,1/32) 
-    A_64, b_64 = poisson_sbp_sat_matrix(64,64,1/64,1/64) 
-    A_128, b_128 = poisson_sbp_sat_matrix(128,128,1/128,1/128) 
-    A_256, b_256 = poisson_sbp_sat_matrix(256,256,1/256,1/256) 
-    A_512, b_512 = poisson_sbp_sat_matrix(512,512,1/512,1/512)
-    A_1024, b_1024 = poisson_sbp_sat_matrix(1024,1024,1/1024,1/1024)  
+    A_8, b_8 = poisson_sbp_sat_matrix(8,8,1/8,1/8) ;
+    A_16, b_16 = poisson_sbp_sat_matrix(16,16,1/16,1/16) ;
+    A_32, b_32 = poisson_sbp_sat_matrix(32,32,1/32,1/32) ;
+    A_64, b_64 = poisson_sbp_sat_matrix(64,64,1/64,1/64) ;
+    A_128, b_128 = poisson_sbp_sat_matrix(128,128,1/128,1/128) ;
+    A_256, b_256 = poisson_sbp_sat_matrix(256,256,1/256,1/256) ;
+    A_512, b_512 = poisson_sbp_sat_matrix(512,512,1/512,1/512) ;
+    A_1024, b_1024 = poisson_sbp_sat_matrix(1024,1024,1/1024,1/1024) ; 
 end
 
 

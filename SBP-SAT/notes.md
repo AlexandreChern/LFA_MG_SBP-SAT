@@ -47,3 +47,10 @@ Notes from April 25
 1. Find the issue with Geometric Multigrid
 2. The H_tilde matrix is different on different grids. To solve the problem directly, it's okay. But for multigrid, it causes different coefficients on the LHS and RHS of the equation. The right-hand side is interpolated, so the H_tilde is associated with the finiest grid. The left-hand-side is formed directly, so the H_tilde will get larger and larger on the left hand side.
 3. This is why Algebraic multigrid was working. Because the LHS operator is obtained through interpolation, so the H_tilde does not grow with coarse grid refinements
+
+
+Notes from April 16
+
+1. Adjusting a constant coefficients to H_tilde does help with residual, but not helping with the error.
+
+2. Removing H_tilde entirely is ideal on smaller problems but not on large problems with more iteration. Probably okay as a preconditioner.
