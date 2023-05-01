@@ -49,8 +49,13 @@ Notes from April 25
 3. This is why Algebraic multigrid was working. Because the LHS operator is obtained through interpolation, so the H_tilde does not grow with coarse grid refinements
 
 
-Notes from April 16
+Notes from April 26
 
 1. Adjusting a constant coefficients to H_tilde does help with residual, but not helping with the error.
 
 2. Removing H_tilde entirely is ideal on smaller problems but not on large problems with more iteration. Probably okay as a preconditioner.
+
+
+Notes from April 30 
+1. H grid back slash is only needed for transferring residual in the pre-smoothing of the V cycle, not in the post-smoothing of V cycle.
+2. Verified that Richardson iteration with \omega values around 0.13 is optimal for MG as a solver and preconditioner as well.

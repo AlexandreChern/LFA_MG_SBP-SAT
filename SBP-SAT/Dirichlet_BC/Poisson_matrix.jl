@@ -197,8 +197,8 @@ function poisson_sbp_sat_matrix(nx,ny,dx,dy)
     A_DDDD = H_tilde*A;
     b_DDDD = H_tilde*b;
 
-    return A, b, -D2
-    # return A_DDDD, b_DDDD, H_tilde * (-D2) # need to resovle the issue multiplying by H_tilde
+    # return A, b, -D2
+    return A_DDDD, b_DDDD, H_tilde # need to resovle the issue multiplying by H_tilde
 end
 
 
