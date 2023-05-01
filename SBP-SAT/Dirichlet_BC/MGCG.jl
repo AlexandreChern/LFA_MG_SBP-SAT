@@ -69,6 +69,12 @@ function initialize_mg_struct(mg_struct,nx,ny,n_level;use_galerkin=false,use_sbp
                 push!(A_mg,A_DDDD)
                 push!(H_mg,H_DDDD)
                 push!(f_mg,reshape(b_DDDD,nx+1,ny+1))
+                dx = 1.0 ./nx
+                dy = 1.0 ./ny
+                xs = 0:dx:1
+                ys = 0:dy:1
+                u_exact = (xs.^2 .- 1) .* (ys'.^2 .- 1)
+                push!(mg_struct.u_exact, u_exact)
             else
                 if use_galerkin
                     A_DDDD = rest_mg[k-1] * A_mg[k-1] * prol_mg[k-1]
@@ -121,10 +127,12 @@ end
 
 function mg_solver(mg_struct, f_in ;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=1,interp="normal",ω=1,maximum_iterations=10,use_galerkin=false,use_sbp=true,use_direct_sol=false)
     # 
-    if isempty(mg_struct.A_mg) || true
-        # initialize_mg_struct(mg_struct,nx,ny,n_level,use_galerkin=use_galerkin,use_sbp=use_sbp)
-        clear_urf(mg_struct)
+    if isempty(mg_struct.A_mg)
+        initialize_mg_struct(mg_struct,nx,ny,n_level,use_galerkin=use_galerkin,use_sbp=use_sbp)
     end
+
+    clear_urf(mg_struct)
+    
     # mg_struct.u_mg[1][:] .= u_in
     mg_struct.f_mg[1][:] .= copy(f_in)[:]
     mg_struct.u_mg[1][:] .= spzeros(nx+1,ny+1)[:]
@@ -135,12 +143,12 @@ function mg_solver(mg_struct, f_in ;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,toleran
     # maximum_iterations = 120 #nx*ny # set maximum_iterations
     # compute the initial residual
     mg_struct.r_mg[1][:] = mg_struct.f_mg[1][:] - mg_struct.A_mg[1] * mg_struct.u_mg[1][:]
-    dx = 1.0 ./nx
-    dy = 1.0 ./ny
-    xs = 0:dx:1
-    ys = 0:dy:1
-    u_exact = (xs.^2 .- 1) .* (ys'.^2 .- 1)
-    push!(mg_struct.u_exact, u_exact)
+    # dx = 1.0 ./nx
+    # dy = 1.0 ./ny
+    # xs = 0:dx:1
+    # ys = 0:dy:1
+    # u_exact = (xs.^2 .- 1) .* (ys'.^2 .- 1)
+    # push!(mg_struct.u_exact, u_exact)
 
     # compute initial L-2 norm
     rms = compute_l2norm(nx,ny,mg_struct.r_mg[1])
@@ -300,10 +308,10 @@ function mg_solver(mg_struct, f_in ;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,toleran
         # end
 
         rms = compute_l2norm(mg_struct.lnx_mg[1],mg_struct.lny_mg[1],mg_struct.r_mg[1])
-        error = norm(mg_struct.u_mg[1] - u_exact)
+        error = norm(mg_struct.u_mg[1] - mg_struct.u_exact[1])
 
-        println("$(iteration_count)\t", " rms ", rms, " rms/init_rms ", rms/init_rms, " log(rms) ", log(rms))
-        println("\t", " error ", error, " log(error) ", log(error))
+        # println("$(iteration_count)\t", " rms ", rms, " rms/init_rms ", rms/init_rms, " log(rms) ", log(rms))
+        # println("\t", " error ", error, " log(error) ", log(error))
 
     end
     return mg_struct.u_mg[1]
@@ -369,6 +377,8 @@ function test_mgcg()
     mgcg(mg_struct,nx=512,ny=512,n_level=8,v1=4,v2=4,v3=10,ω=1.6,iter_algo_num=2,maxiter=1000,precond=true)
     mgcg(mg_struct,nx=512,ny=512,n_level=8,v1=4,v2=4,v3=10,ω=1.6,iter_algo_num=2,maxiter=1000,precond=true)
     mgcg(mg_struct,nx=1024,ny=1024,n_level=8,v1=4,v2=4,v3=10,ω=1.6,iter_algo_num=1,maxiter=1000,precond=true)
+    mgcg(mg_struct,nx=1024,ny=1024,n_level=8,v1=4,v2=4,v3=10,ω=.13,iter_algo_num=5,maxiter=1000,precond=true) # testing richardson
+
     mg_solver(mg_struct, b_64, nx=64,ny=64,n_level=6,v1=10,v3=10,v2=10,iter_algo_num=1,use_galerkin=true,maximum_iterations=40,use_sbp=true) # this works well
 
     # Testing interpolations
