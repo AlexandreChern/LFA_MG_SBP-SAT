@@ -19,6 +19,7 @@ end
 mg_struct = MG([],[],[],[],[],[],[],[],[],[],[],[])
 
 function clear_mg_struct(mg_struct)
+    println("Clearing mg_struct")
     mg_struct.A_mg = []
     mg_struct.H_mg = []
     mg_struct.L_mg = []
@@ -31,12 +32,21 @@ function clear_mg_struct(mg_struct)
     mg_struct.lnx_mg = []
     mg_struct.lny_mg = []
     mg_struct.u_exact = []
+    println("mg_struct cleared")
+end
+
+function clear_urf(mg_struct)
+    for i in 1:length(mg_struct.u_mg)
+        mg_struct.u_mg[i] .= 0
+        mg_struct.r_mg[i] .= 0
+        mg_struct.f_mg[i] .= 0
+    end
 end
 
 function initialize_mg_struct(mg_struct,nx,ny,n_level;use_galerkin=false,use_sbp=true)
-    # println("clearing matrices")
+    println("clearing matrices")
     clear_mg_struct(mg_struct) # comment out if initialize_mg_struct works well
-    # println("Starting assembling matrices")
+    println("Starting assembling matrices")
     A_mg = mg_struct.A_mg
     H_mg = mg_struct.H_mg
     L_mg = mg_struct.L_mg
@@ -106,14 +116,19 @@ function initialize_mg_struct(mg_struct,nx,ny,n_level;use_galerkin=false,use_sbp
             hx,hy = 2*hx, 2*hy
         end
     end
-    # println("Ending resembling matrices")
+    println("Ending resembling matrices")
 end
 
 function mg_solver(mg_struct, f_in ;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,tolerance=1e-10,iter_algo_num=1,interp="normal",ω=1,maximum_iterations=10,use_galerkin=false,use_sbp=true,use_direct_sol=false)
-    initialize_mg_struct(mg_struct,nx,ny,n_level,use_galerkin=use_galerkin,use_sbp=use_sbp)
+    # 
+    if isempty(mg_struct.A_mg) || true
+        # initialize_mg_struct(mg_struct,nx,ny,n_level,use_galerkin=use_galerkin,use_sbp=use_sbp)
+        clear_urf(mg_struct)
+    end
     # mg_struct.u_mg[1][:] .= u_in
     mg_struct.f_mg[1][:] .= copy(f_in)[:]
     mg_struct.u_mg[1][:] .= spzeros(nx+1,ny+1)[:]
+    mg_struct.r_mg[1][:] .= spzeros(nx+1,ny+1)[:]
     # ω = 1 # damping coefficient for SOR
     iter_algos = ["gauss_seidel","SOR","jacobi","chebyshev","richardson"]
     iter_algo = iter_algos[iter_algo_num]
@@ -298,6 +313,8 @@ end
 
 
 function mgcg(mg_struct;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,ω=1.8, maxiter=100,iter_algo_num=2,maximum_iterations=2,precond=true)
+    # clear_mg_struct(mg_struct)
+    initialize_mg_struct(mg_struct,nx,ny,n_level,use_galerkin=false,use_sbp=true)
     x = spzeros(nx+1,ny+1)
     r = spzeros(size(x))
     A,b = poisson_sbp_sat_matrix(nx,ny,1/nx,1/ny)
@@ -341,7 +358,14 @@ function test_mgcg()
     mgcg(mg_struct,nx=128,ny=128,maxiter=100,iter_algo_num=2)
     mg_solver(mg_struct, b_128, nx=128,ny=128,n_level=7,v1=10,v3=10,v2=10,iter_algo_num=1,use_galerkin=true,maximum_iterations=10,use_sbp=true)
     mgcg(mg_struct,nx=512,ny=512,n_level=8,iter_algo_num=1,maxiter=1000,precond=false)
-    mgcg(mg_struct,nx=512,ny=512,n_level=8,v1=4,v2=4,v3=10,iter_algo_num=1,maxiter=1000,precond=true)
+
+    # MGCG with preconditioner
+    mgcg(mg_struct,nx=512,ny=512,n_level=8,v1=4,v2=4,v3=10,iter_algo_num=1,maxiter=3,maximum_iterations=2,precond=true) # need to test why 
+
+
+
+
+    ##############
     mgcg(mg_struct,nx=512,ny=512,n_level=8,v1=4,v2=4,v3=10,ω=1.6,iter_algo_num=2,maxiter=1000,precond=true)
     mgcg(mg_struct,nx=512,ny=512,n_level=8,v1=4,v2=4,v3=10,ω=1.6,iter_algo_num=2,maxiter=1000,precond=true)
     mgcg(mg_struct,nx=1024,ny=1024,n_level=8,v1=4,v2=4,v3=10,ω=1.6,iter_algo_num=1,maxiter=1000,precond=true)
