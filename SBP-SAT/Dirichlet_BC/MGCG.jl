@@ -310,8 +310,8 @@ function mg_solver(mg_struct, f_in ;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,toleran
         rms = compute_l2norm(mg_struct.lnx_mg[1],mg_struct.lny_mg[1],mg_struct.r_mg[1])
         error = norm(mg_struct.u_mg[1] - mg_struct.u_exact[1])
 
-        # println("$(iteration_count)\t", " rms ", rms, " rms/init_rms ", rms/init_rms, " log(rms) ", log(rms))
-        # println("\t", " error ", error, " log(error) ", log(error))
+        println("$(iteration_count)\t", " rms ", rms, " rms/init_rms ", rms/init_rms, " log(rms) ", log(rms))
+        println("\t", " error ", error, " log(error) ", log(error))
 
     end
     return mg_struct.u_mg[1]
@@ -379,7 +379,8 @@ function test_mgcg()
     mgcg(mg_struct,nx=1024,ny=1024,n_level=8,v1=4,v2=4,v3=10,ω=1.6,iter_algo_num=1,maxiter=1000,precond=true)
     mgcg(mg_struct,nx=1024,ny=1024,n_level=8,v1=4,v2=4,v3=10,ω=.13,iter_algo_num=5,maxiter=1000,precond=true) # testing richardson
 
-    mg_solver(mg_struct, b_64, nx=64,ny=64,n_level=6,v1=10,v3=10,v2=10,iter_algo_num=1,use_galerkin=true,maximum_iterations=40,use_sbp=true) # this works well
+    clear_mg_struct(mg_struct)
+    mg_solver(mg_struct, b_64, nx=64,ny=64,n_level=6,v1=10,v3=10,v2=10,iter_algo_num=1,use_galerkin=false,maximum_iterations=40,use_sbp=true) # this works well
 
     # Testing interpolations
     # mg_solver(mg_struct, b_16, nx=16,ny=16,n_level=3,v1=10,v3=10,v2=10,iter_algo_num=1,use_galerkin=false,maximum_iterations=1,use_sbp=true) # this works well
@@ -437,6 +438,8 @@ function surface_plot(A)
     xs = 0:1/(Nx-1):1
     ys = 0:1/(Ny-1):1
     plot(xs,ys,A,st=:surface)
+    xaxis!("x axis")
+    yaxis!("y axis")
 end
 
 function test_surface_plot()
