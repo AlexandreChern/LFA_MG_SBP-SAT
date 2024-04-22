@@ -315,8 +315,8 @@ function mg_solver(mg_struct, f_in ;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,toleran
         rms = compute_l2norm(mg_struct.lnx_mg[1],mg_struct.lny_mg[1],mg_struct.r_mg[1])
         error = norm(mg_struct.u_mg[1] - mg_struct.u_exact[1])
 
-        println("$(iteration_count)\t", " rms ", rms, " rms/init_rms ", rms/init_rms, " log(rms) ", log(rms))
-        println("\t", " error ", error, " log(error) ", log(error))
+        # println("$(iteration_count)\t", " rms ", rms, " rms/init_rms ", rms/init_rms, " log(rms) ", log(rms))
+        # println("\t", " error ", error, " log(error) ", log(error))
 
     end
     return mg_struct.u_mg[1]
@@ -348,7 +348,7 @@ function mgcg(mg_struct;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,ω=1.8, maxiter=100
         x .= x .+ α * p
         r_new = r[:] .- α * A * p[:]
         @show k, norm(r_new) norm(r_new) / init_rms
-        @show k, norm(x[:] - mg_struct.u_exact[1][:])
+        # @show k, norm(x[:] - mg_struct.u_exact[1][:])
         if norm(r_new) < 1e-8 * init_rms
             break
         end
@@ -373,7 +373,7 @@ function test_mgcg()
     mgcg(mg_struct,nx=512,ny=512,n_level=8,iter_algo_num=1,maxiter=1000,precond=false)
 
     # MGCG with preconditioner
-    mgcg(mg_struct,nx=512,ny=512,n_level=8,v1=4,v2=4,v3=10,iter_algo_num=1,maxiter=3,maximum_iterations=2,use_galerkin=true,precond=true); # need to test why 
+    mgcg(mg_struct,nx=512,ny=512,n_level=8,v1=5,v2=5,v3=5,iter_algo_num=1,maxiter=30,maximum_iterations=1,use_galerkin=true,precond=true); # need to test why 
 
 
 
@@ -450,4 +450,26 @@ end
 function test_surface_plot()
     surface_plot(mg_struct_2.u_mg[1])
     surface_plot(mg_struct_2.u_mg[1] - mg_struct_2.u_exact[1])
+end
+
+
+
+
+let
+    mgcg(mg_struct,nx=64,ny=64,n_level=5,v1=5,v2=5,v3=5,iter_algo_num=1,maxiter=30,maximum_iterations=1,use_galerkin=true,precond=true); 
+    mgcg(mg_struct,nx=64,ny=64,n_level=5,v1=5,v2=5,v3=5,iter_algo_num=1,maxiter=30,maximum_iterations=1,use_galerkin=true,precond=true);  
+    mgcg(mg_struct,nx=128,ny=128,n_level=6,v1=5,v2=5,v3=5,iter_algo_num=1,maxiter=30,maximum_iterations=1,use_galerkin=true,precond=true); 
+    mgcg(mg_struct,nx=128,ny=128,n_level=6,v1=5,v2=5,v3=5,iter_algo_num=1,maxiter=30,maximum_iterations=1,use_galerkin=false,precond=true);
+    mgcg(mg_struct,nx=256,ny=256,n_level=7,v1=5,v2=5,v3=5,iter_algo_num=1,maxiter=30,maximum_iterations=1,use_galerkin=true,precond=true);
+    mgcg(mg_struct,nx=256,ny=256,n_level=7,v1=5,v2=5,v3=5,iter_algo_num=1,maxiter=30,maximum_iterations=1,use_galerkin=false,precond=true);
+    mgcg(mg_struct,nx=512,ny=512,n_level=8,v1=5,v2=5,v3=5,iter_algo_num=1,maxiter=30,maximum_iterations=1,use_galerkin=true,precond=true);
+    mgcg(mg_struct,nx=512,ny=512,n_level=8,v1=5,v2=5,v3=5,iter_algo_num=1,maxiter=30,maximum_iterations=1,use_galerkin=false,precond=true);
+    mgcg(mg_struct,nx=1024,ny=1024,n_level=9,v1=5,v2=5,v3=5,iter_algo_num=1,maxiter=30,maximum_iterations=1,use_galerkin=true,precond=true);
+    mgcg(mg_struct,nx=1024,ny=1024,n_level=9,v1=5,v2=5,v3=5,iter_algo_num=1,maxiter=30,maximum_iterations=1,use_galerkin=false,precond=true); 
+    
+    
+
+    # CG
+    mgcg(mg_struct,nx=64,ny=64,n_level=5,v1=5,v2=5,v3=5,iter_algo_num=1,maxiter=10000,maximum_iterations=1,use_galerkin=true,precond=false); 
+    mgcg(mg_struct,nx=128,ny=128,n_level=6,v1=5,v2=5,v3=5,iter_algo_num=1,maxiter=30,maximum_iterations=1,use_galerkin=true,precond=false); 
 end
