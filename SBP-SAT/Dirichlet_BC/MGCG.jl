@@ -471,5 +471,8 @@ let
 
     # CG
     mgcg(mg_struct,nx=64,ny=64,n_level=5,v1=5,v2=5,v3=5,iter_algo_num=1,maxiter=10000,maximum_iterations=1,use_galerkin=true,precond=false); 
-    mgcg(mg_struct,nx=128,ny=128,n_level=6,v1=5,v2=5,v3=5,iter_algo_num=1,maxiter=30,maximum_iterations=1,use_galerkin=true,precond=false); 
+    mgcg(mg_struct,nx=128,ny=128,n_level=6,v1=5,v2=5,v3=5,iter_algo_num=1,maxiter=10000,maximum_iterations=1,use_galerkin=true,precond=false);
+    mgcg(mg_struct,nx=256,ny=256,n_level=7,v1=5,v2=5,v3=5,iter_algo_num=1,maxiter=10000,maximum_iterations=1,use_galerkin=true,precond=false); 
+    mgcg(mg_struct,nx=512,ny=512,n_level=8,v1=5,v2=5,v3=5,iter_algo_num=1,maxiter=10000,maximum_iterations=1,use_galerkin=true,precond=false); 
+    mgcg(mg_struct,nx=1024,ny=1024,n_level=9,v1=5,v2=5,v3=5,iter_algo_num=1,maxiter=10000,maximum_iterations=1,use_galerkin=true,precond=false); 
 end
