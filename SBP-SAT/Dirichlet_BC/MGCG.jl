@@ -77,6 +77,7 @@ function initialize_mg_struct(mg_struct,nx,ny,n_level;use_galerkin=false,use_sbp
                 push!(mg_struct.u_exact, u_exact)
             else
                 if use_galerkin
+                    A_DDDD, b_DDDD, H_DDDD = poisson_sbp_sat_matrix(nx,ny,1/nx,1/ny)
                     A_DDDD = rest_mg[k-1] * A_mg[k-1] * prol_mg[k-1]
                 else
                     A_DDDD, b_DDDD, H_DDDD = poisson_sbp_sat_matrix(nx,ny,1/nx,1/ny)
@@ -204,8 +205,12 @@ function mg_solver(mg_struct, f_in ;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,toleran
             else
                 mg_struct.r_mg[k-1][:] .= mg_struct.f_mg[k-1][:] - mg_struct.A_mg[k-1] * mg_struct.u_mg[k-1][:]
             end
-            mg_struct.f_mg[k] = mg_struct.rest_mg[k-1] * (mg_struct.H_mg[k-1] \ mg_struct.r_mg[k-1][:])
-            mg_struct.f_mg[k] = mg_struct.H_mg[k] * mg_struct.f_mg[k] # trying to adjust Grid spacing difference, working for residual but not errors
+            if use_galerkin == true
+                mg_struct.f_mg[k] = mg_struct.rest_mg[k-1] * mg_struct.r_mg[k-1][:]
+            else
+                mg_struct.f_mg[k] = mg_struct.rest_mg[k-1] * (mg_struct.H_mg[k-1] \ mg_struct.r_mg[k-1][:])
+                mg_struct.f_mg[k] = mg_struct.H_mg[k] * mg_struct.f_mg[k] # trying to adjust Grid spacing difference, working for residual but not errors
+            end
 
             # smoothing on k level when k < n_level
             if k < n_level
@@ -320,9 +325,9 @@ end
 
 
 
-function mgcg(mg_struct;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,ω=1.8, maxiter=100,iter_algo_num=2,maximum_iterations=2,precond=true)
+function mgcg(mg_struct;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,ω=1.8, maxiter=100,iter_algo_num=2,maximum_iterations=2,use_galerkin=false,precond=true)
     # clear_mg_struct(mg_struct)
-    initialize_mg_struct(mg_struct,nx,ny,n_level,use_galerkin=false,use_sbp=true)
+    initialize_mg_struct(mg_struct,nx,ny,n_level,use_galerkin=use_galerkin,use_sbp=true)
     x = spzeros(nx+1,ny+1)
     r = spzeros(size(x))
     A,b = poisson_sbp_sat_matrix(nx,ny,1/nx,1/ny)
@@ -331,7 +336,7 @@ function mgcg(mg_struct;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,ω=1.8, maxiter=100
     # @show init_rms
     z = spzeros(size(r));
     if precond == true
-        z .= mg_solver(mg_struct, r, n_level=n_level, v1=v1,v2=v2,v3=v3, maximum_iterations=maximum_iterations, nx=nx, ny=ny, iter_algo_num=iter_algo_num,ω=ω);
+        z .= mg_solver(mg_struct, r, n_level=n_level, v1=v1,v2=v2,v3=v3, maximum_iterations=maximum_iterations, nx=nx, ny=ny, iter_algo_num=iter_algo_num,use_galerkin=use_galerkin,ω=ω);
     else
         z[:] .= r[:]
     end
@@ -348,7 +353,7 @@ function mgcg(mg_struct;nx=64,ny=64,n_level=3,v1=2,v2=2,v3=2,ω=1.8, maxiter=100
             break
         end
         if precond == true
-            z_new = mg_solver(mg_struct, r_new, n_level=n_level, v1=v1,v2=v2,v3=v3, maximum_iterations=maximum_iterations, nx=nx, ny=ny, iter_algo_num=iter_algo_num,ω=ω)
+            z_new = mg_solver(mg_struct, r_new, n_level=n_level, v1=v1,v2=v2,v3=v3, maximum_iterations=maximum_iterations, nx=nx, ny=ny, use_galerkin=use_galerkin,iter_algo_num=iter_algo_num,ω=ω)
         else
             z_new = copy(r_new)
         end
@@ -368,7 +373,7 @@ function test_mgcg()
     mgcg(mg_struct,nx=512,ny=512,n_level=8,iter_algo_num=1,maxiter=1000,precond=false)
 
     # MGCG with preconditioner
-    mgcg(mg_struct,nx=512,ny=512,n_level=8,v1=4,v2=4,v3=10,iter_algo_num=1,maxiter=3,maximum_iterations=2,precond=true) # need to test why 
+    mgcg(mg_struct,nx=512,ny=512,n_level=8,v1=4,v2=4,v3=10,iter_algo_num=1,maxiter=3,maximum_iterations=2,use_galerkin=true,precond=true); # need to test why 
 
 
 
